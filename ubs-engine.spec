@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        1
+Release:        2
 License:        Mulan PSL v2
 URL:            https://gitee.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -22,7 +22,7 @@ BuildRequires: systemd-devel
 BuildRequires: libboundscheck ubs-comm-devel libxml2-devel
 BuildRequires: numactl-libs
 BuildRequires: bash bc coreutils sudo util-linux-user ninja-build
-Requires: glibc libgcc libstdc++ libboundscheck libxml2 ubs-comm-lib
+Requires: glibc libgcc libstdc++ libboundscheck libxml2 ubs-comm-lib rpm shadow
 
 %define _rpmdir %_topdir/RPMS
 %define _srcrpmdir %_topdir/SRPMS
@@ -265,5 +265,7 @@ fi
 /usr/include/ubse/
 
 %changelog
+* Sat Dec 06 2025 LI LISONG <lilisong2@huawei.com> - 1.0.0-2
+- lcne support updated UB protocol
 * Wed Nov 26 2025 Yu Yaodong <yuyaodong2@huawei.com> - 1.0.0-1
 - Package init
