@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        3
+Release:        4
 License:        Mulan PSL v2
 URL:            https://gitee.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -265,6 +265,8 @@ fi
 /usr/include/ubse/
 
 %changelog
+* Tue Dec 09 2025 Wang Haoping <wanghaoping1@huawei.com> - 1.0.0-4
+- fix(mem): fix bug of mti for mami
 * Mon Dec 08 2025 LI LISONG <lilisong2@huawei.com> - 1.0.0-3
 - fix bug of function "GetAllHandle" and Lcne
 * Sat Dec 06 2025 LI LISONG <lilisong2@huawei.com> - 1.0.0-2
