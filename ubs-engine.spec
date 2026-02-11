@@ -7,9 +7,9 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        5
+Release:        6
 License:        Mulan PSL v2
-URL:            https://gitee.com/openeuler/ubs-engine
+URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
 Group:          System Environment/Base
 Vendor:         Huawei Technologies Co., Ltd.
@@ -265,6 +265,8 @@ fi
 /usr/include/ubse/
 
 %changelog
+* Wed Feb 11 2026 Zhang Qin <zhangqin99@h-partners.com> - 1.0.0-6
+- fix: update ubs-engine-1.0.0.tar.gz
 * Wed Dec 10 2025 LI LISONG <lilisong2@huawei.com> - 1.0.0-5
 - fix: update ubs-engine-1.0.0.tar.gz
 * Tue Dec 09 2025 Wang Haoping <wanghaoping1@huawei.com> - 1.0.0-4
