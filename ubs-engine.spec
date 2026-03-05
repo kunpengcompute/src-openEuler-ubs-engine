@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        10
+Release:        11
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -265,6 +265,8 @@ fi
 /usr/include/ubse/
 
 %changelog
+* Wed Mar 04 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-11
+- feat: update UBM listen port
 * Tue March 03 2026 YONG WENTAO <yongwentao@huawei.com> - 1.0.0-10
 - urma cli deleting type
 * Thu Feb 26 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-9
