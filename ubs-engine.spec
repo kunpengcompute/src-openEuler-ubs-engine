@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        13
+Release:        14
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -443,6 +443,8 @@ fi
 /usr/lib64/librmrs_plugin.so
 
 %changelog
+* Tue Mar 17 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-14
+- feat: ipover URMA
 * Mon Mar 16 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-13
 - feat: add virt & rmrs rpm package
 * Sat Mar 14 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-12
