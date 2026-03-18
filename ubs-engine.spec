@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        16
+Release:        17
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -98,6 +98,14 @@ Summary: rmrs plugin
 Requires: %{name} = %{version}-%{release}
 %description rmrs
 Development package for rmrs plugin
+%post rmrs
+if id "ubse" > /dev/null 2>&1; then
+    usermod -aG ubturbo ubse
+    usermod -aG libvirt ubse
+    echo "Success: ubse user added to ubturbo and libvirt groups"
+else
+    echo "Warning: ubse user does not exist, skip group addition" >&2
+fi
 
 %define project_dir %{name}-%{version}
 %define cmake_build_dir cmake-build-relwithdebinfo
@@ -454,6 +462,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Tue Mar 18 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-17
+- fix: fix rmrs bugs
 * Tue Mar 17 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-16
 - fix: fix ubse start
 * Tue Mar 17 2026 CAO YIFAN <caoyifan9@huawei.com> - 1.0.0-15
