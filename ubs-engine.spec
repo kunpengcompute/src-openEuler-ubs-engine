@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        15
+Release:        16
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -346,9 +346,9 @@ systemctl daemon-reload
 ensure_directory_owner "%{log_dir}" true
 ensure_directory_owner "%{data_dir}" true
 ensure_directory_owner "%{data_dir}/data" true
-ensure_directory_owner "%{data_dir}/sync" true
 ensure_directory_owner "%{cert_dir}" true
 ensure_directory_owner "%{socket_dir}" true
+chmod 750 "%{log_dir}" "%{data_dir}" "%{data_dir}/data"
 chmod 755 "%{socket_dir}"
 chmod 700 "%{cert_dir}"
 systemctl enable %{service_name}
@@ -454,6 +454,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Tue Mar 17 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-16
+- fix: fix ubse start
 * Tue Mar 17 2026 CAO YIFAN <caoyifan9@huawei.com> - 1.0.0-15
 - fix: fix ucache/rmrs spec
 * Tue Mar 17 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-14
