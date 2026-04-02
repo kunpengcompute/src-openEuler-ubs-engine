@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        25
+Release:        26
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -462,6 +462,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Thu April 02 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-26
+- fix: Specify bonding name corresponding to urma info name when create bonding dev
 * Wed April 01 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-25
 - fix: High-safety bug
 * Wed April 01 2026 YONG WENTAO <yongwentao@huawei.com> - 1.0.0-24
