@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        34
+Release:        35
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -462,6 +462,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Thu April 16 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-35
+- fix: For B005_package,form PR377
 * Thu April 16 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-34
 - feat: support clos mesh type in container network
 * Thu April 16 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-33
