@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        36
+Release:        37
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -462,6 +462,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Sat April 18 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-37
+- fix: For JD_clos_package,form PR430
 * Fri April 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-36
 - feat: update mti interfaces to adapt cross pod
 * Thu April 16 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-35
