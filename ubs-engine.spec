@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        37
+Release:        38
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -18,11 +18,15 @@ Prefix: /usr
 BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3
 BuildRequires:  glibc-devel >= 2.34 libstdc++-devel >= 10.3
 BuildRequires:  systemd-devel >= 249
-BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0  ubs-comm-devel
+BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.27.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl >= 3.0 ubs-comm-lib
-
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 libobmm
+Requires: tar systemd
+Requires(pre): coreutils shadow systemd glibc-common
+Requires(post): coreutils gawk util-linux systemd grep sed
+Requires(preun): systemd grep
+Requires(postun): coreutils gawk util-linux systemd shadow glibc-common
 %define _rpmdir %_topdir/RPMS
 %define _srcrpmdir %_topdir/SRPMS
 %define _unpackaged_files_terminate_build 0
@@ -96,6 +100,7 @@ Development package for ucache plugin
 %package rmrs
 Summary: rmrs plugin
 Requires: %{name} = %{version}-%{release}
+Requires(post): coreutils shadow
 %description rmrs
 Development package for rmrs plugin
 %post rmrs
@@ -113,11 +118,13 @@ fi
 %define log_dir /var/log/ubse
 %define data_dir /var/lib/ubse
 %define cert_dir /var/lib/ubse/cert
+%define lcne_cert_dir /var/lib/ubse/lcne_cert
 %define socket_dir /var/run/ubse
 
 %define system_user ubse
 %define system_group ubse
 %define ubm_group ubm_nuds
+%define ubturbo_group ubturbo
 %define service_name ubse.service
 
 %define ensure_directory_owner() ensure_directory_owner() { \
@@ -152,26 +159,6 @@ fi
         fi \
     done < <(ipcs -s | awk '/^[0-9]/ {print $2, $3, $4}') \
     echo "delete %{system_user} semaphores finished" \
-}
-
-# Function to check the file and modify its content
-%define modify_udev_rule() modify_udev_rule() { \
-    local rules_file="/etc/udev/rules.d/99-obmm.rules" \
-    local old_content='KERNEL=="obmm", OWNER="root", GROUP="root", MODE="0600"' \
-    local new_content='KERNEL=="obmm", OWNER="%{system_user}", GROUP="%{system_group}", MODE="0600"' \
-    if [[ -f "$rules_file" ]]; then \
-        sed -i "s|$old_content|$new_content|" "$rules_file" \
-    fi \
-}
-
-# Function to check the file and restore its content
-%define restore_udev_rule() restore_udev_rule() { \
-    local rules_file="/etc/udev/rules.d/99-obmm.rules" \
-    local old_content='KERNEL=="obmm", OWNER="%{system_user}", GROUP="%{system_group}", MODE="0600"' \
-    local new_content='KERNEL=="obmm", OWNER="root", GROUP="root", MODE="0600"' \
-    if [[ -f "$rules_file" ]]; then \
-        sed -i "s|$old_content|$new_content|" "$rules_file" \
-    fi \
 }
 
 %define update_config() update_config() { \
@@ -299,7 +286,7 @@ create_user() {
         group_exists=true
     fi
 
-    if $user_exists || $group_exists; then
+    if $user_exists; then
         local current_uid=$(getent passwd %{system_user} | cut -d: -f3)
         local current_gid=$(getent passwd %{system_user} | cut -d: -f4)
         if [ -n "$requested_uid" ] && [ "$current_uid" != "$requested_uid" ]; then
@@ -308,27 +295,26 @@ create_user() {
         if [ -n "$requested_gid" ] && [ "$current_gid" != "$requested_gid" ]; then
             print_error "User %{system_user} exists with GID $current_gid, but requested GID is $requested_gid. Cannot change GID automatically."
         fi
-        return 0
     fi
 
-    if [ -z "$requested_gid" ]; then
-        groupadd -r %{system_group} || print_error "Failed to create group %{system_group}"
-    else
-        if getent group "$requested_gid" > /dev/null; then
-            print_error "GID $requested_gid is already in use by another group."
+    if $group_exists; then
+        local current_gid=$(getent group %{system_group} | cut -d: -f3)
+        if [ -n "$requested_gid" ] && [ "$current_gid" != "$requested_gid" ]; then
+            print_error "Group %{system_group} exists with GID $current_gid, but requested GID is $requested_gid. Cannot change GID automatically."
         fi
-        groupadd -r -g "$requested_gid" "%{system_group}" || print_error "Failed to create group %{system_group} with GID $requested_gid"
     fi
+
+    local group_args=("-r")
+    if [ -n "$requested_gid" ]; then
+        group_args+=(-g "$requested_gid")
+    fi
+    $group_exists || groupadd "${group_args[@]}" %{system_group} || print_error "Failed to create group %{system_group}"
 
     local user_args=("-r" "-g" "%{system_group}" "-s" "/sbin/nologin")
-
     if [ -n "$requested_uid" ]; then
-        if getent passwd "$requested_uid" > /dev/null; then
-            print_error "UID $requested_uid is already in use by another user."
-        fi
         user_args+=("-u" "$requested_uid")
     fi
-    useradd "${user_args[@]}" %{system_user} || print_error "Failed to create user %{system_user}"
+    $user_exists || useradd "${user_args[@]}" %{system_user} || print_error "Failed to create user %{system_user}"
 }
 
 if systemctl cat %{service_name} >/dev/null 2>&1 ; then
@@ -338,16 +324,20 @@ fi
 create_user
 
 if getent group %{ubm_group} > /dev/null; then
-    sudo usermod -aG %{ubm_group} %{system_user}
+    usermod -aG %{ubm_group} %{system_user}
 else
-    echo "[WARN] Group '%{ubm_group}' does not exist. Skipping usermod for '%{system_user}'."
+    echo "[WARN] Group '%{ubm_group}' not found. User '%{system_user}' was not added to this group. If UBM is required, please install the corresponding package and run: usermod -aG %{ubm_group} %{system_user}"
 fi
 
+if getent group %{ubturbo_group} > /dev/null; then
+    sudo usermod -aG %{ubturbo_group} %{system_user}
+else
+    echo "[WARN] Group '%{ubturbo_group}' does not exist. Skipping usermod for '%{system_user}'."
+fi
 
 %post
 set -e
 %{ensure_directory_owner}
-%{modify_udev_rule}
 %{deleted_semaphore}
 %{update_config}
 systemctl daemon-reload
@@ -355,24 +345,24 @@ ensure_directory_owner "%{log_dir}" true
 ensure_directory_owner "%{data_dir}" true
 ensure_directory_owner "%{data_dir}/data" true
 ensure_directory_owner "%{cert_dir}" true
+ensure_directory_owner "%{lcne_cert_dir}" true
 ensure_directory_owner "%{socket_dir}" true
 chmod 750 "%{log_dir}" "%{data_dir}" "%{data_dir}/data"
 chmod 755 "%{socket_dir}"
 chmod 700 "%{cert_dir}"
+chmod 700 "%{lcne_cert_dir}"
 systemctl enable %{service_name}
-modify_udev_rule
 if [ "$MXE_SCENE" == "vm" ]; then
     update_config /etc/ubse/ubse_plugin_admission.conf
 fi
 deleted_semaphore
 
+
 %preun
 set -e
 if [ "$1" -ne 0 ]; then
-    echo "skip preun"
     exit 0
 fi
-%{restore_udev_rule}
 if systemctl cat %{service_name} >/dev/null 2>&1 ; then
     systemctl stop %{service_name} || true
     systemctl disable %{service_name} || true
@@ -380,12 +370,10 @@ fi
 if systemctl list-units --type=service | grep -q %{service_name}; then
     systemctl reset-failed %{service_name} || true
 fi
-restore_udev_rule
 
 
 %postun
 if [ "$1" -ne 0 ]; then
-    echo "skip postun"
     exit 0
 fi
 %{deleted_semaphore}
@@ -394,6 +382,7 @@ systemctl daemon-reload
 remove_directory %{log_dir}
 remove_directory %{cert_dir}
 remove_directory %{socket_dir}
+remove_directory %{lcne_cert_dir}
 
 deleted_semaphore
 if id "%{system_user}" &>/dev/null; then
@@ -462,6 +451,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Tue April 21 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-38
+- feat: 三方库依赖修改为依赖系统库的方式,form PR432
 * Sat April 18 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-37
 - fix: For JD_clos_package,form PR430
 * Fri April 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-36
