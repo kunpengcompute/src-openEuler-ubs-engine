@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        39
+Release:        40
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -21,7 +21,7 @@ BuildRequires:  systemd-devel >= 249
 BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.27.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 libobmm
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 libobmm
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
 Requires(post): coreutils gawk util-linux systemd grep sed
@@ -451,6 +451,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Wed April 22 2026 YONG WENTAO <yongwentao@huawei.com> - 1.0.0-40
+- fix: For B006_package,form PR463
 * Tue April 21 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-39
 - fix: For B006_package,form PR450
 * Tue April 21 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-38
