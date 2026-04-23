@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        40
+Release:        41
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -83,7 +83,7 @@ Development package for UBSE python SDK
 Summary: virtagent plugin
 Requires: %{name} = %{version}-%{release}
 %description virtagent
-Development package for virtagent plugin
+Package for virt_agent plugin
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-ucache
@@ -166,14 +166,14 @@ fi
     if grep -q '^# mempooling=777' "$config_file"; then \
         sed -i 's/^# mempooling=777/mempooling=777/' "$config_file" \
     fi \
-    if grep -q '^# vm=205' "$config_file"; then \
-        sed -i 's/^# vm=205/vm=205/' "$config_file" \
+    if grep -q '^# virt_agent=205' "$config_file"; then \
+        sed -i 's/^# virt_agent=205/virt_agent=205/' "$config_file" \
     fi \
     if ! grep -q 'mempooling=777' "$config_file"; then \
         echo "mempooling=777" >> "$config_file" \
     fi \
-    if ! grep -q 'vm=205' "$config_file"; then \
-        echo "vm=205" >> "$config_file" \
+    if ! grep -q 'virt_agent=205' "$config_file"; then \
+        echo "virt_agent=205" >> "$config_file" \
     fi \
 }
 
@@ -211,15 +211,15 @@ cp -f %{_builddir}/%{project_dir}/scripts/command_completion/cli_commands.sh %{b
 mkdir -p %{buildroot}/usr/lib64
 
 #install virtagent
-cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvm.so %{buildroot}/usr/lib64/
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvirtagent.so %{buildroot}/usr/lib64/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libstrategy.so %{buildroot}/usr/lib64/
-cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_vm.conf %{buildroot}/etc/ubse/plugins/
-cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virtagent.conf %{buildroot}/etc/ubse/plugins/
+cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_virt_agent.conf %{buildroot}/etc/ubse/plugins/
+cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virt_agent.conf %{buildroot}/etc/ubse/plugins/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/
 ln -sf libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/libubs-virt-agent.so.1
 ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
-mkdir -p %{buildroot}/usr/include/virtagent
-cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virtagent/
+mkdir -p %{buildroot}/usr/include/virt_agent
+cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
 
 
 #install client-libs
@@ -424,17 +424,17 @@ fi
 
 %files virtagent
 %defattr(644,root,root,-)
-%config(noreplace) /etc/ubse/plugins/plugin_vm.conf
-%config(noreplace) /etc/ubse/plugins/auth-virtagent.conf
+%config(noreplace) /etc/ubse/plugins/plugin_virt_agent.conf
+%config(noreplace) /etc/ubse/plugins/auth-virt_agent.conf
 %defattr(755,root,root,-)
-/usr/lib64/libvm.so
+/usr/lib64/libvirtagent.so
 /usr/lib64/libstrategy.so
 /usr/lib64/libubs-virt-agent.so.1.0.0
 %defattr(-,root,root,-)
 /usr/lib64/libubs-virt-agent.so.1
 /usr/lib64/libubs-virt-agent.so
 %defattr(644,root,root,755)
-/usr/include/virtagent/
+/usr/include/virt_agent/
 
 %files ucache
 %defattr(644,root,root,-)
@@ -451,6 +451,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Thu April 23 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-41
+- fix: For B006_package,form PR470
 * Wed April 22 2026 YONG WENTAO <yongwentao@huawei.com> - 1.0.0-40
 - fix: For B006_package,form PR463
 * Tue April 21 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-39
