@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        49
+Release:        50
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -445,6 +445,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Sat May 9 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-50
+- fix: For 26.0.0.1.B007_package,form PR555
 * Sat May 9 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-49
 - fix: For 26.0.0.1.B007_package,form PR552
 * Wed May 06 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-48
