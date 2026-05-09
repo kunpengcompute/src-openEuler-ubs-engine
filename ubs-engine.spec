@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        48
+Release:        49
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -125,7 +125,6 @@ fi
 %define system_user ubse
 %define system_group ubse
 %define ubm_group ubm_nuds
-%define ubturbo_group ubturbo
 %define service_name ubse.service
 
 %define ensure_directory_owner() ensure_directory_owner() { \
@@ -330,12 +329,6 @@ else
     echo "[WARN] Group '%{ubm_group}' not found. User '%{system_user}' was not added to this group. If UBM is required, please install the corresponding package and run: usermod -aG %{ubm_group} %{system_user}"
 fi
 
-if getent group %{ubturbo_group} > /dev/null; then
-    sudo usermod -aG %{ubturbo_group} %{system_user}
-else
-    echo "[WARN] Group '%{ubturbo_group}' does not exist. Skipping usermod for '%{system_user}'."
-fi
-
 %post
 set -e
 %{ensure_directory_owner}
@@ -452,6 +445,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Sat May 9 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-49
+- fix: For 26.0.0.1.B007_package,form PR552
 * Wed May 06 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-48
 - fix: For 26.0.0.1.B007_package,form PR522
 * Wed April 29 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-47
