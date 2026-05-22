@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        53
+Release:        54
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -22,7 +22,7 @@ BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
 BuildRequires:  libvirt-devel >= 9.0
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 libobmm
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 obmm
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
 Requires(post): coreutils gawk util-linux systemd grep sed
@@ -452,6 +452,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Fri May 22 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-54
+- feat: change libobmm to obmm
 * Tue May 19 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-53
 - fix: For 26.1.RC1.B015_package,form PR602
 * Tue May 19 2026 NotCold <mohan5@huawei.com> - 1.0.0-52
