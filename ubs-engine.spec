@@ -6,8 +6,8 @@
 Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
-Version:        1.0.0
-Release:        54
+Version:        1.0.1
+Release:        1
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -22,7 +22,8 @@ BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
 BuildRequires:  libvirt-devel >= 9.0
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 obmm
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15
+Requires: (libobmm or obmm)
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
 Requires(post): coreutils gawk util-linux systemd grep sed
@@ -125,7 +126,6 @@ fi
 %define system_user ubse
 %define system_group ubse
 %define ubm_group ubm_nuds
-%define ubturbo_group ubturbo
 %define service_name ubse.service
 
 %define ensure_directory_owner() ensure_directory_owner() { \
@@ -216,8 +216,8 @@ cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvirtagent.so %{buildroo
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libstrategy.so %{buildroot}/usr/lib64/
 cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_virt_agent.conf %{buildroot}/etc/ubse/plugins/
 cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virt_agent.conf %{buildroot}/etc/ubse/plugins/
-cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/
-ln -sf libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/libubs-virt-agent.so.1
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.%{version} %{buildroot}/usr/lib64/
+ln -sf libubs-virt-agent.so.%{version} %{buildroot}/usr/lib64/libubs-virt-agent.so.1
 ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
 mkdir -p %{buildroot}/usr/include/virt_agent
 cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
@@ -227,7 +227,7 @@ cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroo
 cmake --install %{_builddir}/%{project_dir}/%{cmake_build_dir} \
     --component ubse_sdk \
     --prefix %{buildroot}/usr
-ln -sf libubse-client.so.1.0.0 %{buildroot}/usr/lib64/libubse-client.so.1
+ln -sf libubse-client.so.%{version} %{buildroot}/usr/lib64/libubse-client.so.1
 
 #install client-devel
 ln -sf libubse-client.so.1 %{buildroot}/usr/lib64/libubse-client.so
@@ -330,12 +330,6 @@ else
     echo "[WARN] Group '%{ubm_group}' not found. User '%{system_user}' was not added to this group. If UBM is required, please install the corresponding package and run: usermod -aG %{ubm_group} %{system_user}"
 fi
 
-if getent group %{ubturbo_group} > /dev/null; then
-    sudo usermod -aG %{ubturbo_group} %{system_user}
-else
-    echo "[WARN] Group '%{ubturbo_group}' does not exist. Skipping usermod for '%{system_user}'."
-fi
-
 %post
 set -e
 %{ensure_directory_owner}
@@ -408,7 +402,7 @@ fi
 
 %files client-libs
 %defattr(755,root,root,-)
-/usr/lib64/libubse-client.so.1.0.0
+/usr/lib64/libubse-client.so.%{version}
 %defattr(-,root,root,-)
 /usr/lib64/libubse-client.so.1
 
@@ -430,7 +424,7 @@ fi
 %defattr(755,root,root,-)
 /usr/lib64/libvirtagent.so
 /usr/lib64/libstrategy.so
-/usr/lib64/libubs-virt-agent.so.1.0.0
+/usr/lib64/libubs-virt-agent.so.%{version}
 %defattr(-,root,root,-)
 /usr/lib64/libubs-virt-agent.so.1
 /usr/lib64/libubs-virt-agent.so
@@ -452,6 +446,8 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Mon May 25 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-1
+- fix: test for building SP4. Date:2026/05/25
 * Fri May 22 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-54
 - feat: change libobmm to obmm
 * Tue May 19 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-53
