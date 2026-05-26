@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.1
-Release:        1
+Release:        2
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -36,6 +36,14 @@ Requires(postun): coreutils gawk util-linux systemd shadow glibc-common
 %description
 UBS Engine
 
+# ========================================================
+#                   SUBPACKAGE: ubs-engine-process-mem
+# ========================================================
+%package processmem
+Summary: processmem plugin
+Requires: %{name} = %{version}-%{release}
+%description processmem
+Development package for processmem plugin
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-client-libs
@@ -222,6 +230,9 @@ ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
 mkdir -p %{buildroot}/usr/include/virt_agent
 cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
 
+#install processmem
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libprocess_mem.so %{buildroot}/usr/lib64/
+cp %{_builddir}/%{project_dir}/conf/plugin_process_mem.conf %{buildroot}/etc/ubse/plugins/
 
 #install client-libs
 cmake --install %{_builddir}/%{project_dir}/%{cmake_build_dir} \
@@ -445,7 +456,13 @@ fi
 %defattr(644,root,root,755)
 /usr/local/mempooling/include/mempooling/
 
+%files processmem
+%config(noreplace) %{_sysconfdir}/ubse/plugins/plugin_process_mem.conf
+%{_libdir}/libprocess_mem.so
+
 %changelog
+* Tue May 26 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-2
+- fix: For B017 from PR603
 * Mon May 25 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-1
 - fix: test for building SP4. Date:2026/05/25
 * Fri May 22 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-54
