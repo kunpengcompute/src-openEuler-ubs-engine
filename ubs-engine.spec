@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.1
-Release:        4
+Release:        5
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -18,11 +18,11 @@ Prefix: /usr
 BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3
 BuildRequires:  glibc-devel >= 2.34 libstdc++-devel >= 10.3
 BuildRequires:  systemd-devel >= 249
-BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.27.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
+BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.40.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
 BuildRequires:  libvirt-devel >= 9.0
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.40.0 ubs-comm-lib >= 1.0.0-15
 Requires: (libobmm or obmm)
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
@@ -461,6 +461,8 @@ fi
 %{_libdir}/libprocess_mem.so
 
 %changelog
+* Tue June 2 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-5
+- fix: For 26.1.RC1.B020_package,form  PR753. Date:2026/06/02
 * Sat May 30 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-4
 - fix: For 26.1.RC1.B020_package,form PR736. Date:2026/05/30
 * Wed May 27 2026 Liu Jiangqi <liuajiangqi1@huawei.com> - 1.0.1-3
