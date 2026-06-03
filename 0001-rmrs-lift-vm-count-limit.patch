@@ -1,0 +1,40 @@
+From: rmrs <rmrs@ubs-engine>
+Date: Tue, 3 Jun 2026 00:00:00 +0800
+Subject: [PATCH] rmrs: 放开虚机个数限制
+
+放开迁出执行&策略pid个数上限(MIGRATE_PID_MAX_SIZE 100->500)，
+放开超分接口虚机个数上限(MAX_VM_NUM 100->400)，支持更多虚机并发迁出场景。
+
+---
+ src/addons/rmrs/interface/mempooling_interface_adapt.cpp | 2 +-
+ src/addons/rmrs/over_commit/mempooling_interface.cpp     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/addons/rmrs/interface/mempooling_interface_adapt.cpp b/src/addons/rmrs/interface/mempooling_interface_adapt.cpp
+index a64ddc85..4eaf430c 100644
+--- a/src/addons/rmrs/interface/mempooling_interface_adapt.cpp
++++ b/src/addons/rmrs/interface/mempooling_interface_adapt.cpp
+@@ -36,7 +36,7 @@ using std::vector;
+ using namespace mempooling::smap;
+
+ constexpr size_t MIGRATE_PID_MIN_SIZE = 1;                     // 设计规格，迁出执行&策略pid个数范围1~100
+-constexpr size_t MIGRATE_PID_MAX_SIZE = 100;                   // 设计规格，迁出执行&策略pid个数范围1~100
++constexpr size_t MIGRATE_PID_MAX_SIZE = 500;                   // 设计规格，迁出执行&策略pid个数范围1~500
+ constexpr uint64_t MIGRATE_MEM_MAX_SIZE = 3221225472;          // 设计规格，迁出策略决策最大内存3T
+ constexpr uint32_t SMAP_ADD_PROCESS_DURATION_DEFAULT_TIME = 1; // 设计规格，统计周期数组，默认值为1s。
+ constexpr size_t SMAP_ADD_PROCESS_VEC_MIN_SIZE = 1;            // 设计规格，添加进程扫描数组范围1~100
+diff --git a/src/addons/rmrs/over_commit/mempooling_interface.cpp b/src/addons/rmrs/over_commit/mempooling_interface.cpp
+index 6f4a8562..78c61bdd 100644
+--- a/src/addons/rmrs/over_commit/mempooling_interface.cpp
++++ b/src/addons/rmrs/over_commit/mempooling_interface.cpp
+@@ -45,7 +45,7 @@ using namespace ubse::log;
+ using namespace ubse::election;
+ using namespace ubse::mem::controller;
+ const int HIGH_WATER_MARK_THRESHOLD = 100;
+-constexpr int MAX_VM_NUM = 100;
++constexpr int MAX_VM_NUM = 400;
+ constexpr int MAX_BORROW_SIZES = 256;
+
+ struct ReturnNeedMaps {
+--
+2.33.0
