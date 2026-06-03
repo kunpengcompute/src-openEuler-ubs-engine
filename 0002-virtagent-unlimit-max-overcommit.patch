@@ -1,0 +1,51 @@
+Index: src/addons/virt_agent/cloud_adapter/case_conf.h
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/addons/virt_agent/cloud_adapter/case_conf.h b/src/addons/virt_agent/cloud_adapter/case_conf.h
+--- a/src/addons/virt_agent/cloud_adapter/case_conf.h
++++ b/src/addons/virt_agent/cloud_adapter/case_conf.h
+@@ -27,7 +27,7 @@
+ constexpr int OVER_COMMITMENT_MODE = 0;
+ constexpr int MEM_FRAGMENTATION_MODE = 1;
+ constexpr float_t MEM_FRAGMENTATION_RATIO = 1.0;   // The overcommitment ratio in fragmentation scenarios is 1.0.
+-constexpr float_t MAX_OVER_COMMITMENT_RATIO = 1.8; // Maximum overcommitment ratio, which ranges from 1.0 to 1.8.
++constexpr float_t MAX_OVER_COMMITMENT_RATIO = 10; // Maximum overcommitment ratio, which ranges from 1.0 to 10.
+ const std::string OVER_COMMITMENT_CASE = "overCommitment";
+ const std::string MEM_FRAGMENTATION_CASE = "memFragmentation";
+ const std::string CASE_CONF_KEY_PREFIX = "ubse_";
+ Index: src/addons/virt_agent/default_strategy/default_strategy.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/addons/virt_agent/default_strategy/default_strategy.cpp b/src/addons/virt_agent/default_strategy/default_strategy.cpp
+--- a/src/addons/virt_agent/default_strategy/default_strategy.cpp
++++ b/src/addons/virt_agent/default_strategy/default_strategy.cpp
+@@ -37,7 +37,7 @@
+ const int TIME_SECOND_600 = 600;
+ const int TIME_SECOND_1800 = 1800;
+ const float MAX_MEM_BORROW_LOWEST = 0;
+-const float MAX_MEM_BORROW_HIGHEST = 0.8;
++const float MAX_MEM_BORROW_HIGHEST = 9;
+ std::vector<uint64_t> MemPerBorrow{SPECS_1G, SPECS_2G, SPECS_3G, SPECS_4G};
+ Logfunc g_vmLogFunc = nullptr;
+ Index: src/addons/virt_agent/default_strategy/default_strategy.cpp
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/addons/virt_agent/default_strategy/default_strategy.cpp b/src/addons/virt_agent/default_strategy/default_strategy.cpp
+--- a/src/addons/virt_agent/default_strategy/default_strategy.cpp
++++ b/src/addons/virt_agent/default_strategy/default_strategy.cpp
+@@ -584,7 +584,7 @@
+         maxMemBorrow = maxBorrow;
+         return DS_OK;
+     } else {
+-        StrategyLogWarn("SetMaxMemBorrow = " + to_string(maxBorrow) + ", not in range(0, 0.8], " +
++        StrategyLogWarn("SetMaxMemBorrow = " + to_string(maxBorrow) + ", not in range(0, 9], " +
+                         "default maxMemBorrow = " + to_string(maxMemBorrow));
+         return DS_ERR_SET_INVAL;
+     }
+
