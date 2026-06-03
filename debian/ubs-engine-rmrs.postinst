@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+if id "ubse" > /dev/null 2>&1; then
+    usermod -aG ubturbo ubse 2>/dev/null || true
+    usermod -aG libvirt ubse 2>/dev/null || true
+    echo "Success: ubse user added to ubturbo and libvirt groups"
+else
+    echo "Warning: ubse user does not exist, skip group addition" >&2
+fi

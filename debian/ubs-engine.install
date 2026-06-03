@@ -1,0 +1,5 @@
+/usr/bin/ubse
+/usr/bin/ubsectl
+/usr/lib/systemd/system/ubse.service
+/etc/ubse/ubse*.conf
+/etc/bash_completion.d/cli_commands.sh
