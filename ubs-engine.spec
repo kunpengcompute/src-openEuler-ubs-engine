@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.0
-Release:        44
+Release:        61
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -18,10 +18,11 @@ Prefix: /usr
 BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3
 BuildRequires:  glibc-devel >= 2.34 libstdc++-devel >= 10.3
 BuildRequires:  systemd-devel >= 249
-BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.27.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
+BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.40.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 libobmm
+BuildRequires:  libvirt-devel >= 9.0
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.40.0 ubs-comm-lib >= 1.0.0-15 libobmm
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
 Requires(post): coreutils gawk util-linux systemd grep sed
@@ -83,7 +84,7 @@ Development package for UBSE python SDK
 Summary: virtagent plugin
 Requires: %{name} = %{version}-%{release}
 %description virtagent
-Development package for virtagent plugin
+Package for virt_agent plugin
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-ucache
@@ -124,7 +125,6 @@ fi
 %define system_user ubse
 %define system_group ubse
 %define ubm_group ubm_nuds
-%define ubturbo_group ubturbo
 %define service_name ubse.service
 
 %define ensure_directory_owner() ensure_directory_owner() { \
@@ -166,14 +166,14 @@ fi
     if grep -q '^# mempooling=777' "$config_file"; then \
         sed -i 's/^# mempooling=777/mempooling=777/' "$config_file" \
     fi \
-    if grep -q '^# vm=205' "$config_file"; then \
-        sed -i 's/^# vm=205/vm=205/' "$config_file" \
+    if grep -q '^# virt_agent=205' "$config_file"; then \
+        sed -i 's/^# virt_agent=205/virt_agent=205/' "$config_file" \
     fi \
     if ! grep -q 'mempooling=777' "$config_file"; then \
         echo "mempooling=777" >> "$config_file" \
     fi \
-    if ! grep -q 'vm=205' "$config_file"; then \
-        echo "vm=205" >> "$config_file" \
+    if ! grep -q 'virt_agent=205' "$config_file"; then \
+        echo "virt_agent=205" >> "$config_file" \
     fi \
 }
 
@@ -211,15 +211,15 @@ cp -f %{_builddir}/%{project_dir}/scripts/command_completion/cli_commands.sh %{b
 mkdir -p %{buildroot}/usr/lib64
 
 #install virtagent
-cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvm.so %{buildroot}/usr/lib64/
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvirtagent.so %{buildroot}/usr/lib64/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libstrategy.so %{buildroot}/usr/lib64/
-cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_vm.conf %{buildroot}/etc/ubse/plugins/
-cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virtagent.conf %{buildroot}/etc/ubse/plugins/
+cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_virt_agent.conf %{buildroot}/etc/ubse/plugins/
+cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virt_agent.conf %{buildroot}/etc/ubse/plugins/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/
 ln -sf libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/libubs-virt-agent.so.1
 ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
-mkdir -p %{buildroot}/usr/include/virtagent
-cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virtagent/
+mkdir -p %{buildroot}/usr/include/virt_agent
+cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
 
 
 #install client-libs
@@ -329,12 +329,6 @@ else
     echo "[WARN] Group '%{ubm_group}' not found. User '%{system_user}' was not added to this group. If UBM is required, please install the corresponding package and run: usermod -aG %{ubm_group} %{system_user}"
 fi
 
-if getent group %{ubturbo_group} > /dev/null; then
-    sudo usermod -aG %{ubturbo_group} %{system_user}
-else
-    echo "[WARN] Group '%{ubturbo_group}' does not exist. Skipping usermod for '%{system_user}'."
-fi
-
 %post
 set -e
 %{ensure_directory_owner}
@@ -424,17 +418,17 @@ fi
 
 %files virtagent
 %defattr(644,root,root,-)
-%config(noreplace) /etc/ubse/plugins/plugin_vm.conf
-%config(noreplace) /etc/ubse/plugins/auth-virtagent.conf
+%config(noreplace) /etc/ubse/plugins/plugin_virt_agent.conf
+%config(noreplace) /etc/ubse/plugins/auth-virt_agent.conf
 %defattr(755,root,root,-)
-/usr/lib64/libvm.so
+/usr/lib64/libvirtagent.so
 /usr/lib64/libstrategy.so
 /usr/lib64/libubs-virt-agent.so.1.0.0
 %defattr(-,root,root,-)
 /usr/lib64/libubs-virt-agent.so.1
 /usr/lib64/libubs-virt-agent.so
 %defattr(644,root,root,755)
-/usr/include/virtagent/
+/usr/include/virt_agent/
 
 %files ucache
 %defattr(644,root,root,-)
@@ -451,6 +445,40 @@ fi
 /usr/local/mempooling/include/mempooling/
 
 %changelog
+* Wed Jun 3 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-61
+- fix: For 26.0.0.1.B011_package,form PR774
+* Wed Jun 3 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-60
+- fix: For 26.0.0.1.B011_package,form PR773
+* Mon Jun 1 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-59
+- fix: For 26.0.0.1.B011_package,form PR752
+* Thu May 28 2026 Huang Dewei <huangdewei@huawei.com> - 1.0.0-58
+- fix: For 26.0.0.1.B010, form sp3-br_bugfix_20260330_PR723
+* Fri May 22 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-57
+- fix: For 26.0.0.1.B010,form PR715
+* Fri May 22 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-56
+- fix: For 26.0.0.1.B009,form PR665
+* Fri May 22 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-55
+- feat: change libobmm to obmm
+* Thu May 21 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-54
+- fix: For 26.0.0.1.B009_package,form sp3-br_bugfix_20260330_PR647
+* Wed May 20 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-53
+- fix: For 26.0.0.1.B009_package,form sp3-br_bugfix_20260330_PR631
+* Mon May 18 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-52
+- fix: For 26.0.0.1.B008_package,form sp3-br_bugfix_20260330_PR608
+* Fri May 15 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-51
+- fix: For 26.0.0.1.B008_package,form sp3-br_bugfix_20260330_PR606
+* Sat May 9 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-50
+- fix: For 26.0.0.1.B007_package,form PR555
+* Sat May 9 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-49
+- fix: For 26.0.0.1.B007_package,form PR552
+* Wed May 06 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-48
+- fix: For 26.0.0.1.B007_package,form PR522
+* Wed April 29 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-47
+- fix: For 26.0.0.1.B007_package,form PR524
+* Tue April 28 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-46
+- fix: For 26.1.RC1.B007_package,form PR495
+* Mon Apr 27 2026 Liu Jiangqi <liuajiangqi1@huawei.com> - 1.0.0-45
+- fix: dependency fix,from PR502
 * Sat April 25 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-44
 - fix: For JD_clos_package,form PR493
 * Sat April 25 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-43

@@ -1,0 +1,84 @@
+#!/bin/bash
+set -e
+
+SYSTEM_USER="ubse"
+SYSTEM_GROUP="ubse"
+LOG_DIR="/var/log/ubse"
+DATA_DIR="/var/lib/ubse"
+CERT_DIR="/var/lib/ubse/cert"
+LCNE_CERT_DIR="/var/lib/ubse/lcne_cert"
+SOCKET_DIR="/var/run/ubse"
+SERVICE_NAME="ubse.service"
+
+ensure_directory_owner() {
+    local dir_path="$1"
+    local recursive="${2:-false}"
+    if [ ! -d "$dir_path" ]; then
+        mkdir -p "$dir_path"
+    fi
+    local current_owner
+    current_owner=$(stat -c "%U:%G" "$dir_path" 2>/dev/null || true)
+    if [ "$current_owner" != "$SYSTEM_USER:$SYSTEM_GROUP" ]; then
+        chown "$SYSTEM_USER:$SYSTEM_GROUP" "$dir_path" 2>/dev/null || true
+    fi
+    if [ "$recursive" = true ]; then
+        chown -R "$SYSTEM_USER:$SYSTEM_GROUP" "$dir_path" 2>/dev/null || true
+    fi
+}
+
+deleted_semaphore() {
+    echo "Checking and deleting semaphores..."
+    while read -r semid owner; do
+        echo "Checking semaphore ID: $semid, Owner: $owner"
+        if [ "$owner" = "$SYSTEM_USER" ]; then
+            echo "Deleting semaphore $semid..."
+            if ! ipcrm -s "$semid" 2>/dev/null; then
+                echo "Failed to delete semaphore $semid"
+            else
+                echo "Deleted semaphore $semid"
+            fi
+        fi
+    done < <(ipcs -s 2>/dev/null | awk '/^[0-9]/ {print $2, $3}' || true)
+    echo "delete $SYSTEM_USER semaphores finished"
+}
+
+update_config() {
+    local config_file="$1"
+    if [ ! -f "$config_file" ]; then
+        return
+    fi
+    if grep -q '^# mempooling=777' "$config_file"; then
+        sed -i 's/^# mempooling=777/mempooling=777/' "$config_file"
+    fi
+    if grep -q '^# virt_agent=205' "$config_file"; then
+        sed -i 's/^# virt_agent=205/virt_agent=205/' "$config_file"
+    fi
+    if ! grep -q 'mempooling=777' "$config_file"; then
+        echo "mempooling=777" >> "$config_file"
+    fi
+    if ! grep -q 'virt_agent=205' "$config_file"; then
+        echo "virt_agent=205" >> "$config_file"
+    fi
+}
+
+systemctl daemon-reload 2>/dev/null || true
+
+ensure_directory_owner "$LOG_DIR" true
+ensure_directory_owner "$DATA_DIR" true
+ensure_directory_owner "$DATA_DIR/data" true
+ensure_directory_owner "$CERT_DIR" true
+ensure_directory_owner "$LCNE_CERT_DIR" true
+ensure_directory_owner "$SOCKET_DIR" true
+
+chmod 750 "$LOG_DIR" "$DATA_DIR" "$DATA_DIR/data" 2>/dev/null || true
+chmod 755 "$SOCKET_DIR" 2>/dev/null || true
+chmod 700 "$CERT_DIR" 2>/dev/null || true
+chmod 700 "$LCNE_CERT_DIR" 2>/dev/null || true
+
+systemctl enable "$SERVICE_NAME" 2>/dev/null || true
+
+if [ "${MXE_SCENE:-}" = "vm" ]; then
+    update_config /etc/ubse/ubse_plugin_admission.conf
+fi
+
+deleted_semaphore
