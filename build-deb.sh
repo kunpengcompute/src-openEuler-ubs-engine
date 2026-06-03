@@ -45,9 +45,7 @@ cd "${PKG_DIR}"
 dpkg-buildpackage -us -uc -b
 
 echo "[4/4] Collecting DEB packages..."
-DEB_OUTPUT="${SOURCE_DIR}/output"
-rm -rf "${DEB_OUTPUT}"
-mkdir -p "${DEB_OUTPUT}"
+DEB_OUTPUT="$(dirname "${SOURCE_DIR}")"
 find "${BUILD_DIR}" -maxdepth 1 -name "*.deb" -exec cp {} "${DEB_OUTPUT}/" \;
 
 echo "============================================"
