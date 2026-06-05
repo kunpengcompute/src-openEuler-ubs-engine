@@ -1,0 +1,173 @@
+diff --git a/scripts/rpm/ubse.service b/scripts/rpm/ubse.service
+index f6fe4292..b5fceb6e 100644
+--- a/scripts/rpm/ubse.service
++++ b/scripts/rpm/ubse.service
+@@ -16,6 +16,7 @@ Environment=HCOM_CONNECTION_RETRY_TIMES=1
+ Environment=HCOM_CONNECTION_SEND_TIMEOUT_SEC=10
+ Environment=HCOM_CONNECTION_RECV_TIMEOUT_SEC=10
+ Environment=HCOM_SET_LOG_LEVEL=3
++Environment=SCENE_TYPE=common
+ Environment=HCOM_CTX_CAPACITY=1048576
+ Environment=LD_LIBRARY_PATH=/usr/lib64/ubse
+ ExecStartPre=/bin/sh -c "/usr/bin/setfacl -m u:ubse:rwx /var/run/sysSentry/ &>/dev/null || echo 'Unable to set sysSentry acl'"
+@@ -26,7 +27,7 @@ ExecStartPre=/bin/sh -c "/usr/bin/setfacl -m u:ubse:rwx /var/run/sysSentry/contr
+ ExecStartPre=/bin/sh -c "/usr/bin/setfacl -m u:ubse:rwx /usr/bin/sentryctl  &>/dev/null || echo 'Unable to set sentryctl acl'"
+ ExecStart=/usr/bin/ubse
+ Restart=on-failure
+-CapabilityBoundingSet=CAP_SYS_NICE CAP_DAC_OVERRIDE CAP_FOWNER CAP_CHOWN CAP_AUDIT_WRITE CAP_NET_ADMIN CAP_SYS_PTRACE
+-AmbientCapabilities=CAP_SYS_NICE CAP_DAC_OVERRIDE CAP_FOWNER CAP_CHOWN CAP_AUDIT_WRITE CAP_NET_ADMIN CAP_SYS_PTRACE
++CapabilityBoundingSet=CAP_SYS_NICE CAP_DAC_OVERRIDE CAP_FOWNER CAP_CHOWN CAP_AUDIT_WRITE CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
++AmbientCapabilities=CAP_SYS_NICE CAP_DAC_OVERRIDE CAP_FOWNER CAP_CHOWN CAP_AUDIT_WRITE CAP_NET_ADMIN CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+ [Install]
+ WantedBy=multi-user.target
+\ No newline at end of file
+diff --git a/src/framework/security/ubse_security.cpp b/src/framework/security/ubse_security.cpp
+index c9be1624..1451dec3 100644
+--- a/src/framework/security/ubse_security.cpp
++++ b/src/framework/security/ubse_security.cpp
+@@ -11,16 +11,15 @@
+  */
+ 
+ #include "ubse_security.h"
+-#include <vector>
+ #include <linux/capability.h>
++#include <vector>
+ #include "ubse_error.h"
+ #include "ubse_security_module.h"
+ 
+-
+ namespace ubse::security {
+ uint32_t ChangeOverrideCapability(bool isAdd)
+ {
+-    std::vector<__u32> cap {CAP_DAC_OVERRIDE};
++    std::vector<__u32> cap{CAP_DAC_OVERRIDE};
+     return UbseSecurityModule::ModifyEffectiveCapabilities(cap, isAdd);
+ }
+-}
++} // namespace ubse::security
+diff --git a/src/framework/security/ubse_security_manager.cpp b/src/framework/security/ubse_security_manager.cpp
+index e051f609..e4ff656b 100644
+--- a/src/framework/security/ubse_security_manager.cpp
++++ b/src/framework/security/ubse_security_manager.cpp
+@@ -70,23 +70,25 @@ UbseResult UbseSecurityManager::GetCapabilities()
+     return UBSE_OK;
+ }
+ 
+-void SetCapabilitiesData(__user_cap_data_struct *capData)
++void SetCapabilitiesData(__user_cap_data_struct* capData)
+ {
+     const std::vector<__u32> pCapabilities = {
+         CAP_SYS_NICE, // 允许进程改变进程或线程的优先级和调度策略
+         CAP_FOWNER,   // 允许绕过 /dev/obmm_shmdev 的 owner 检查
+         CAP_DAC_OVERRIDE,
+-        CAP_CHOWN,       // 允许修改 /dev/obmm_shmdev 的 owner 和 group
+-        CAP_AUDIT_WRITE, // 允许写入审计日志 日志路径 /var/log/audit
+-        CAP_NET_ADMIN,   // 允许访问urma文件
+-        CAP_SYS_PTRACE,  // 允许访问其他进程的信息，如 /proc/pid/numa_maps
++        CAP_DAC_READ_SEARCH, // 允许读取其他进程的 /proc/* 文件
++        CAP_CHOWN,           // 允许修改 /dev/obmm_shmdev 的 owner 和 group
++        CAP_AUDIT_WRITE,     // 允许写入审计日志 日志路径 /var/log/audit
++        CAP_NET_ADMIN,       // 允许访问urma文件
++        CAP_SYS_PTRACE,      // 允许访问其他进程的信息，如 /proc/pid/numa_maps
+     };
+ 
+     const std::vector<__u32> eCapabilities = {
+-        CAP_SYS_NICE,    // 允许进程改变进程或线程的优先级和调度策略
+-        CAP_AUDIT_WRITE, // 允许写入审计日志 日志路径 /var/log/audit
+-        CAP_NET_ADMIN,  // 允许访问urma文件
+-        CAP_SYS_PTRACE, // 允许访问其他进程的信息，如 /proc/pid/numa_maps
++        CAP_SYS_NICE,        // 允许进程改变进程或线程的优先级和调度策略
++        CAP_DAC_READ_SEARCH, // 允许读取其他进程的 /proc/* 文件
++        CAP_AUDIT_WRITE,     // 允许写入审计日志 日志路径 /var/log/audit
++        CAP_NET_ADMIN,       // 允许访问urma文件
++        CAP_SYS_PTRACE,      // 允许访问其他进程的信息，如 /proc/pid/numa_maps
+     };
+ 
+     const std::vector<__u32> iCapabilities = {
+@@ -134,7 +136,7 @@ UbseResult UbseSecurityManager::SetInitialCapabilities()
+ 
+     // 清空数据结构
+     auto ret = memset_s(capData, sizeof(__user_cap_data_struct) * CAP_SEGMENT_COUNT, 0,
+-        sizeof(__user_cap_data_struct) * CAP_SEGMENT_COUNT);
++                        sizeof(__user_cap_data_struct) * CAP_SEGMENT_COUNT);
+     if (ret != EOK) {
+         delete[] capData;
+         return ret;
+diff --git a/src/framework/security/ubse_security_manager.h b/src/framework/security/ubse_security_manager.h
+index 382bd544..d5c2f62d 100644
+--- a/src/framework/security/ubse_security_manager.h
++++ b/src/framework/security/ubse_security_manager.h
+@@ -20,7 +20,7 @@
+ #include "ubse_common_def.h"
+ 
+ namespace ubse::security {
+-using namespace ubse::common::def;
++using ubse::common::def::UbseResult;
+ 
+ class UbseSecurityManager {
+ public:
+diff --git a/src/framework/security/ubse_security_module.cpp b/src/framework/security/ubse_security_module.cpp
+index f247a38b..497e7bab 100644
+--- a/src/framework/security/ubse_security_module.cpp
++++ b/src/framework/security/ubse_security_module.cpp
+@@ -12,13 +12,13 @@
+ 
+ #include "ubse_security_module.h"
+ 
+-#include <iostream>                // for char_traits, basic_ostream
++#include <iostream> // for char_traits, basic_ostream
+ 
+-#include "ubse_security_manager.h" // for UbseSecurityManager
+-#include "ubse_context.h"          // for DYNAMIC_CREATE
+-#include "ubse_env_util.h"         // for GetEnv
+-#include "ubse_error.h"            // for UBSE_OK, UBSE_ERROR
++#include "ubse_context.h"  // for DYNAMIC_CREATE
++#include "ubse_env_util.h" // for GetEnv
++#include "ubse_error.h"    // for UBSE_OK, UBSE_ERROR
+ #include "ubse_logger.h"
++#include "ubse_security_manager.h" // for UbseSecurityManager
+ 
+ namespace ubse::security {
+ BASE_DYNAMIC_CREATE(UbseSecurityModule);
+@@ -56,7 +56,7 @@ void UbseSecurityModule::Stop()
+     // Do Nothing
+ }
+ 
+-UbseResult UbseSecurityModule::ModifyEffectiveCapabilities(std::vector<__u32> &caps, bool isAdd)
++UbseResult UbseSecurityModule::ModifyEffectiveCapabilities(std::vector<__u32>& caps, bool isAdd)
+ {
+     return UbseSecurityManager::ModifyEffectiveCapabilities(caps, isAdd);
+ }
+diff --git a/src/framework/security/ubse_security_module.h b/src/framework/security/ubse_security_module.h
+index fccc8e9d..200af933 100644
+--- a/src/framework/security/ubse_security_module.h
++++ b/src/framework/security/ubse_security_module.h
+@@ -13,14 +13,14 @@
+ #ifndef UBSE_SECURITY_MODULE_H
+ #define UBSE_SECURITY_MODULE_H
+ 
+-#include <vector>
+ #include <linux/capability.h>
++#include <vector>
+ #include "ubse_common_def.h"
+ #include "ubse_module.h"
+ #include "ubse_security_manager.h"
+ 
+ namespace ubse::security {
+-using namespace ubse::common::def;
++using ubse::common::def::UbseResult;
+ using ubse::module::UbseModule;
+ 
+ class UbseSecurityModule final : public UbseModule {
+@@ -31,9 +31,9 @@ public:
+     void UnInitialize() override;
+     UbseResult Start() override;
+     void Stop() override;
+-    static UbseResult ModifyEffectiveCapabilities(std::vector<__u32> &caps, bool isAdd);
++    static UbseResult ModifyEffectiveCapabilities(std::vector<__u32>& caps, bool isAdd);
+ };
+ 
+-}
++} // namespace ubse::security
+ 
+ #endif // UBSE_SECURITY_MODULE_H
