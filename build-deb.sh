@@ -32,6 +32,7 @@ echo "[1/4] Copying debian directory..."
 cp -r "${SOURCE_DIR}/debian" "${PKG_DIR}/debian"
 
 echo "[2/4] Applying patches..."
+dos2unix "${PKG_DIR}/scripts/rpm/ubse.service"
 for patch_file in $(ls "${SOURCE_DIR}"/*.patch 2>/dev/null | sort); do
     echo "  Applying $(basename "${patch_file}")..."
     if ! patch -p1 -d "${PKG_DIR}" < "${patch_file}"; then
