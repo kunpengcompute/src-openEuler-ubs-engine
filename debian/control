@@ -90,3 +90,9 @@ Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Pre-Depends: coreutils, passwd
 Description: rmrs plugin
  Package for rmrs plugin.
+
+Package: ubs-engine-processmem
+Architecture: arm64
+Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: processmem plugin
+ Package for processmem plugin.
