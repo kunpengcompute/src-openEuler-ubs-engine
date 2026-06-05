@@ -80,6 +80,10 @@ override_dh_auto_install:
 	mkdir -p debian/tmp/usr/local/mempooling/include/mempooling/
 	install -Dm644 src/addons/rmrs/interface/mempooling_interface.h debian/tmp/usr/local/mempooling/include/mempooling/
 
+	# Install processmem
+	install -Dm755 $(BUILD_DIR)/lib/libprocess_mem.so debian/tmp/$(LIBDIR)/libprocess_mem.so
+	install -Dm644 conf/plugin_process_mem.conf debian/tmp/etc/ubse/plugins/
+
 override_dh_shlibdeps:
 	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
 
