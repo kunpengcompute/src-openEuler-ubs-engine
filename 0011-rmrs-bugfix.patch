@@ -1,10 +1,9 @@
-From 774e6465a3d28dbcf96d0747788ec64af3c5114b Mon Sep 17 00:00:00 2001
+From 659b34b78eee43d858105ba6dd7d55d37075d643 Mon Sep 17 00:00:00 2001
 From: subceux <liujiangqi1@huawei.com>
-Date: Wed, 10 Jun 2026 16:56:19 +0800
+Date: Wed, 10 Jun 2026 17:45:19 +0800
 Subject: [PATCH] rmrs bugfix
 
 ---
- .../process_mem/process_mem_pid_manager_def.h |   2 +-
  .../rmrs/common/config/mp_configuration.cpp   |   9 +
  .../rmrs/common/config/mp_configuration.h     |   1 +
  .../common/executor/mem_borrow_executor.cpp   | 171 +++++++++++++-----
@@ -17,21 +16,8 @@ Subject: [PATCH] rmrs bugfix
  .../over_commit_fault_management_handler.cpp  |  45 ++++-
  .../over_commit_fault_node_module.cpp         |  68 ++++---
  .../over_commit_fault_node_module.h           |   1 -
- 13 files changed, 437 insertions(+), 135 deletions(-)
+ 12 files changed, 436 insertions(+), 134 deletions(-)
 
-diff --git a/src/addons/process_mem/process_mem_pid_manager_def.h b/src/addons/process_mem/process_mem_pid_manager_def.h
-index ea6bb68c..ac71b50e 100644
---- a/src/addons/process_mem/process_mem_pid_manager_def.h
-+++ b/src/addons/process_mem/process_mem_pid_manager_def.h
-@@ -138,7 +138,7 @@ struct PidCollectInfo {
- 
- enum class UsrInfoPluginType : uint32_t
- {
--    PROCESS_MEM = 0,
-+    PROCESS_MEM = 123,
- };
- 
- inline const std::string PROCESS_MEM_NAME_PREFIX = "ProcessMem_";
 diff --git a/src/addons/rmrs/common/config/mp_configuration.cpp b/src/addons/rmrs/common/config/mp_configuration.cpp
 index 64ee9fb0..732237d2 100644
 --- a/src/addons/rmrs/common/config/mp_configuration.cpp
