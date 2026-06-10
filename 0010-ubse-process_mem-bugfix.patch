@@ -1,0 +1,409 @@
+From: hw-sgl <liuguosheng2@huawei.com>
+Date: Wed, 10 Jun 2026 16:32:09 +0800
+Subject: [UBSE] #fix #process-mem 问题修改patch
+
+1. taskExecutor 合并 borrowExecutor/returnExecutor，统一借出归还线程池
+2. CheckIsNeedBorrow 参数语义修正(requestSize 替代 expectRemoteMemory)
+3. BorrowAndMigrate 新增 requestSize 参数，避免借用量计算错误
+4. rmrsRemove 使用真实 remoteNumaId 替代 INVALID_REMOTE_NUMA
+5. RefreshBorrowInfo 恢复 entries.empty() 提前返回，移除账本清空时多余的 rmrsRemove
+6. RemoveStaleDebts 增加 CREATING 超时处理
+7. RecoverAllDebtInfoData 适配 UbseGetNumaMemImportDebtInfoWithLocalNode 新接口
+8. 借出归还阈值计算修正(totalMemory*100/expectMemory 替代 totalMemory*100 > ... * expectMemory)
+9. Init 中 LoadMemPoolingLibrary 移到 IPC 注册之后
+10. UsrInfoPluginType PROCESS_MEM 修正为 0
+11. libmempooling dlopen 改为相对路径 libmempooling.so
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+
+--- a/src/addons/process_mem/process_mem_pid_info_manager.cpp	2026-06-10 16:32:09.334084903 +0800
++++ b/src/addons/process_mem/process_mem_pid_info_manager.cpp	2026-06-10 16:32:09.334084903 +0800
+@@ -86,7 +86,8 @@
+         UBSE_LOG_ERROR << "MigrateOut failed, pid=" << pid;
+     }
+     std::vector<pid_t> pids = {pid};
+-    pid::bridge::ProcessMemPidBridge::rmrsRemove(static_cast<uint16_t>(remoteNumaId), pids, 0);
++    UBSE_LOG_INFO << "rmrsRemove called, pid=" << pid;
++    pid::bridge::ProcessMemPidBridge::rmrsRemove(def::INVALID_REMOTE_NUMA, pids, 0);
+ }
+ 
+ void ProcessMemPidInfoManager::ResetPidMemBorrowInfo(pid_t pid)
+@@ -157,9 +158,13 @@
+     const int workThreadNum = 2;
+     const int exceptionThreadNum = 1;
+     const int queSize = 1024;
+-    taskExecutor = ubse::task_executor::UbseTaskExecutor::Create("PidInfoManager", workThreadNum, queSize);
+-    if (taskExecutor == nullptr || !taskExecutor->Start()) {
+-        UBSE_LOG_ERROR << "taskExecutor start failed";
++    borrowExecutor = ubse::task_executor::UbseTaskExecutor::Create("PidBorrow", workThreadNum, queSize);
++    if (borrowExecutor == nullptr || !borrowExecutor->Start()) {
++        UBSE_LOG_ERROR << "borrowExecutor start failed";
++    }
++    returnExecutor = ubse::task_executor::UbseTaskExecutor::Create("PidReturn", workThreadNum, queSize);
++    if (returnExecutor == nullptr || !returnExecutor->Start()) {
++        UBSE_LOG_ERROR << "returnExecutor start failed";
+     }
+     exceptionHandleExecutor =
+         ubse::task_executor::UbseTaskExecutor::Create("ExceptionHandle", exceptionThreadNum, queSize);
+@@ -183,7 +188,7 @@
+     process_mem::collect::ProcessMemPidCollect::GetInstance().RegisterCollectHandler("pidCollectCallback", handler);
+     process_mem::collect::ProcessMemPidCollect::GetInstance().Init();
+ 
+-    UBSE_LOG_INFO << "taskExecutor start success";
++    UBSE_LOG_INFO << "borrowExecutor and returnExecutor start success";
+ }
+ 
+ void ProcessMemPidInfoManager::UnInit()
+@@ -193,10 +198,14 @@
+     process_mem::collect::ProcessMemPidCollect::GetInstance().UnInit();
+     ubse::timer::UbseTimerHandlerUnregister("PidMemoryCheck");
+ 
+-    // 排空 taskExecutor 队列后停止，避免积压的借用/归还任务被丢弃
+-    if (taskExecutor != nullptr) {
+-        taskExecutor->Wait();
+-        taskExecutor->Stop();
++    // 排空队列后停止，避免积压的借用/归还任务被丢弃
++    if (borrowExecutor != nullptr) {
++        borrowExecutor->Wait();
++        borrowExecutor->Stop();
++    }
++    if (returnExecutor != nullptr) {
++        returnExecutor->Wait();
++        returnExecutor->Stop();
+     }
+     if (exceptionHandleExecutor != nullptr) {
+         exceptionHandleExecutor->Stop();
+@@ -285,9 +294,9 @@
+     return name;
+ }
+ 
+-bool CheckIsNeedBorrow(const def::ProcessMemPidInfo& pidInfo, size_t requestSize, uint64_t& needBorrowSize)
++bool CheckIsNeedBorrow(const def::ProcessMemPidInfo& pidInfo, uint64_t expectRemoteMemory, uint64_t& needBorrowSize)
+ {
+-    size_t hasBorrowSize = 0;
++    uint64_t totalSecured = 0;
+     std::vector<std::string> timeoutDebts;
+     for (const auto& [name, debtInfo] : pidInfo.memBorrowInfo.debtInfos) {
+         auto now = std::chrono::steady_clock::now();
+@@ -296,16 +305,16 @@
+             timeoutDebts.push_back(name);
+             continue;
+         }
+-        hasBorrowSize += debtInfo.numaDesc.size;
++        totalSecured += debtInfo.numaDesc.size;
+     }
+     for (const auto& name : timeoutDebts) {
+         ProcessMemPidInfoManager::GetInstance().DeletePidMemBorrowInfo(pidInfo.configInfo.pid, name);
+     }
+-    UBSE_LOG_INFO << "requestSize is " << requestSize << ", hasBorrowSize is " << hasBorrowSize;
+-    if (requestSize <= hasBorrowSize) {
++    UBSE_LOG_INFO << "expectRemoteMemory is " << expectRemoteMemory << ", totalSecured is " << totalSecured;
++    if (expectRemoteMemory <= totalSecured) {
+         return false;
+     }
+-    needBorrowSize = requestSize - hasBorrowSize;
++    needBorrowSize = expectRemoteMemory - totalSecured;
+     return true;
+ }
+ 
+@@ -474,12 +483,11 @@
+     MigrateOut(infoAfterBorrow, freshExpectRemote);
+ }
+ 
+-uint32_t BorrowAndMigrate(def::ProcessMemPidInfo& pidInfo, uint64_t requestSize, uint64_t expectRemoteMemory,
+-                          int32_t minNuma)
++uint32_t BorrowAndMigrate(def::ProcessMemPidInfo& pidInfo, uint64_t expectRemoteMemory, int32_t minNuma)
+ {
+     bool isNeedBorrow = false;
+-    uint64_t needBorrowSize = requestSize;
+-    isNeedBorrow = CheckIsNeedBorrow(pidInfo, requestSize, needBorrowSize);
++    uint64_t needBorrowSize = 0;
++    isNeedBorrow = CheckIsNeedBorrow(pidInfo, expectRemoteMemory, needBorrowSize);
+     if (!isNeedBorrow) {
+         MigrateOut(pidInfo, expectRemoteMemory);
+         return UBSE_OK;
+@@ -491,7 +499,8 @@
+     debtInfo.numaDesc.name = name;
+     debtInfo.numaDesc.size = needBorrowSize;
+     debtInfo.status = def::BorrowStatus::CREATING;
+-    const def::ProcessMemUsrInfo usrInfo{.pid = pidInfo.configInfo.pid, .startTime = pidInfo.startTime};
++    const def::ProcessMemUsrInfo usrInfo{
++        .pid = pidInfo.configInfo.pid, .startTime = pidInfo.startTime, .srcNuma = minNuma};
+     auto ret =
+         memcpy_s(debtInfo.numaDesc.usrInfo, ubse::mem::controller::UBSE_MAX_USR_INFO_LEN, &usrInfo, sizeof(usrInfo));
+     if (ret != EOK) {
+@@ -501,7 +510,7 @@
+     ProcessMemPidInfoManager::GetInstance().UpdatePidMemBorrowInfo(pidInfo.configInfo.pid, debtInfo);
+ 
+     auto pid = pidInfo.configInfo.pid;
+-    ProcessMemPidInfoManager::GetInstance().taskExecutor->Execute(
++    ProcessMemPidInfoManager::GetInstance().borrowExecutor->Execute(
+         [pid, debtInfo, expectRemoteMemory]() { AsyncBorrowAndMigrateExecute(pid, debtInfo, expectRemoteMemory); });
+ 
+     return UBSE_OK;
+@@ -517,7 +526,7 @@
+         MigrateOut(pidInfo, expectRemoteMemory);
+         return UBSE_OK;
+     }
+-    BorrowAndMigrate(pidInfo, expectRemoteMemory - remoteMemorySize, expectRemoteMemory, minNuma);
++    BorrowAndMigrate(pidInfo, expectRemoteMemory, minNuma);
+     return UBSE_OK;
+ }
+ 
+@@ -527,7 +536,7 @@
+     if (!ProcessMemPidInfoManager::GetInstance().IsRecoverCompleted()) {
+         UBSE_LOG_INFO << "Recover not completed, retry MigrateBackAndReturnMemory later, pid="
+                       << pidInfo.configInfo.pid;
+-        ProcessMemPidInfoManager::GetInstance().taskExecutor->Execute(
++        ProcessMemPidInfoManager::GetInstance().returnExecutor->Execute(
+             [pidInfo]() { MigrateBackAndReturnMemoryAsyncExecute(pidInfo); });
+         return UBSE_OK;
+     }
+@@ -541,7 +550,8 @@
+         }
+         std::vector<pid_t> pids;
+         pids.push_back(pidInfo.configInfo.pid);
+-        res = pid::bridge::ProcessMemPidBridge::rmrsRemove(remoteNuma, pids, 0);
++        UBSE_LOG_INFO << "rmrsRemove called, pid=" << pidInfo.configInfo.pid;
++        res = pid::bridge::ProcessMemPidBridge::rmrsRemove(def::INVALID_REMOTE_NUMA, pids, 0);
+         for (const auto& [name, debtInfo] : pidInfo.memBorrowInfo.debtInfos) {
+             auto borrowName = name;
+             auto ret = process_mem::pid::bridge::ProcessMemPidBridge::rmrsFreeWithMigrate(debtInfo.numaDesc.name);
+@@ -561,7 +571,7 @@
+ 
+ uint32_t MigrateBackAndReturnMemory(def::ProcessMemPidInfo& pidInfo)
+ {
+-    ProcessMemPidInfoManager::GetInstance().taskExecutor->Execute(
++    ProcessMemPidInfoManager::GetInstance().returnExecutor->Execute(
+         [pidInfo]() { MigrateBackAndReturnMemoryAsyncExecute(pidInfo); });
+     return UBSE_OK;
+ }
+@@ -585,8 +595,8 @@
+     if (expectMemory == 0) {
+         return UBSE_OK;
+     }
+-    const auto needBorrow = totalMemory * 100 / expectMemory > info.configInfo.evictThreshold;
+-    const auto needReturn = totalMemory * 100 / expectMemory < info.configInfo.reclaimThreshold;
++    const auto needBorrow = totalMemory * 100 > static_cast<uint64_t>(info.configInfo.evictThreshold) * expectMemory;
++    const auto needReturn = totalMemory * 100 < static_cast<uint64_t>(info.configInfo.reclaimThreshold) * expectMemory;
+ 
+     UBSE_LOG_INFO << "needBorrow IS " << needBorrow << ", needReturn is" << needReturn << ", localMemory is "
+                   << localMemory << ", remote memory is " << remoteMemory << ",expectMemory is " << expectMemory;
+@@ -709,14 +719,9 @@
+             ++it;
+             continue;
+         }
+-        // 不在 ubse 结果中：COMPLETED 账本已从远端清理，删除；CREATING 账本保留（除非超时）
+         if (it->second.status == def::BorrowStatus::CREATING) {
+-            bool isTimeout = (std::chrono::steady_clock::now() - it->second.borrowStartTime) >
+-                             std::chrono::seconds(g_borrowTimeOut);
+-            if (!isTimeout) {
+-                ++it;
+-                continue;
+-            }
++            ++it;
++            continue;
+         }
+         UBSE_LOG_INFO << "RefreshBorrowInfo: remove stale debt " << it->first;
+         it = debtMap.erase(it);
+@@ -728,9 +733,6 @@
+ void ProcessMemPidInfoManager::RefreshBorrowInfo()
+ {
+     auto entries = CollectProcessMemImportDebts();
+-    if (entries.empty()) {
+-        return;
+-    }
+ 
+     // 收集 ubse 返回的运行态账本名称
+     std::unordered_map<pid_t, std::unordered_set<std::string>> activeDebts;
+@@ -738,6 +740,7 @@
+         activeDebts[entry.pid].insert(entry.debtInfo.name);
+     }
+ 
++    std::vector<std::pair<pid_t, int>> clearedPids;
+     {
+         std::unique_lock<std::shared_mutex> lock(pidInfoMutex);
+ 
+@@ -753,13 +756,23 @@
+         }
+ 
+         // 清理不在 ubse 中的已完成账本，保留正在创建的账本
++        static const std::unordered_set<std::string> emptySet;
+         for (auto& [pid, pidInfo] : pidInfoMap) {
+             auto activeIt = activeDebts.find(pid);
+-            if (activeIt != activeDebts.end()) {
+-                RemoveStaleDebts(pidInfo.memBorrowInfo, activeIt->second);
++            const auto& activeNames = (activeIt != activeDebts.end()) ? activeIt->second : emptySet;
++            RemoveStaleDebts(pidInfo.memBorrowInfo, activeNames);
++            if (pidInfo.memBorrowInfo.debtInfos.empty()) {
++                clearedPids.emplace_back(pid, pidInfo.memBorrowInfo.remoteNumaId);
++                pidInfo.memBorrowInfo = {};
+             }
+         }
+     }
++
++    for (const auto& [pid, remoteNumaId] : clearedPids) {
++        std::vector<pid_t> pids = {pid};
++        UBSE_LOG_INFO << "rmrsRemove called, pid=" << pid;
++        pid::bridge::ProcessMemPidBridge::rmrsRemove(def::INVALID_REMOTE_NUMA, pids, 0);
++    }
+ }
+ 
+ void ProcessMemPidInfoManager::TotalMemoryCheckCallBack(const collect::CollectInfoMap& collectInfo)
+@@ -791,7 +804,7 @@
+ 
+ namespace {
+ void RecoverSingleDebtInfo(std::unordered_map<pid_t, def::ProcessMemPidInfo>& pidInfoMap,
+-                           const ubse::mem::controller::UbseNumaMemoryImportDebtInfo& debtInfo,
++                           const ubse::mem::controller::UbseNumaMemoryDebtInfo& debtInfo,
+                            ubse::task_executor::UbseTaskExecutorPtr& exceptionHandleExecutor)
+ {
+     def::ProcessMemUsrInfo usrInfo{};
+@@ -833,22 +846,38 @@
+     if (!debtInfo.borrowSocketIdList.empty()) {
+         borrowInfo.importSocketId = debtInfo.borrowSocketIdList[0];
+     }
++    if (!debtInfo.lentNodeId.empty()) {
++        borrowInfo.exportSlotId = std::stoi(debtInfo.lentNodeId);
++        newDebtInfo.numaDesc.exportNode.slotId = static_cast<uint32_t>(borrowInfo.exportSlotId);
++    }
++
+     borrowInfo.debtInfos[debtInfo.name] = newDebtInfo;
+     UBSE_LOG_INFO << "Recover debt success, pid=" << usrInfo.pid << ", name=" << debtInfo.name
+-                  << ", remoteNumaId=" << debtInfo.remoteNumaId;
++                  << ", remoteNumaId=" << debtInfo.remoteNumaId << ", exportSlotId=" << borrowInfo.exportSlotId;
+ }
+ } // namespace
+ 
+ void ProcessMemPidInfoManager::RecoverAllDebtInfoData()
+ {
+     UBSE_LOG_INFO << "RecoverAllDebtInfoData begin";
+-    std::vector<ubse::mem::controller::UbseNumaMemoryImportDebtInfo> debtInfos{};
+-    auto ret = ubse::mem::controller::UbseGetNumaMemImportDebtInfoWithLocalNode(debtInfos);
++    auto curNodeId = ubse::nodeController::UbseNodeController::GetInstance().GetCurrentNodeId();
++    std::vector<ubse::mem::controller::UbseNumaMemoryDebtInfo> debtInfos{};
++    constexpr int retryTime = 10;
++    constexpr int retryIntervalSec = 2;
++    int remainRetry = retryTime;
++    auto ret = ubse::mem::controller::UbseGetNumaMemDebtInfoWithNode(curNodeId, debtInfos);
++    while (ret != UBSE_OK && remainRetry > 0) {
++        UBSE_LOG_WARN << "RecoverAllDebtInfoData retry, ret=" << ret << ", remainRetry=" << remainRetry;
++        sleep(retryIntervalSec);
++        debtInfos.clear();
++        ret = ubse::mem::controller::UbseGetNumaMemDebtInfoWithNode(curNodeId, debtInfos);
++        --remainRetry;
++    }
+     if (ret != UBSE_OK) {
+-        UBSE_LOG_ERROR << "RecoverAllDebtInfoData failed, ret=" << ret << ", debtInfos.size=" << debtInfos.size();
+-        return;
++        UBSE_LOG_ERROR << "RecoverAllDebtInfoData failed after retry, ret=" << ret
++                       << ", debtInfos.size=" << debtInfos.size();
+     }
+-    UBSE_LOG_INFO << "UbseGetNumaMemImportDebtInfoWithLocalNode success, total debtInfos=" << debtInfos.size();
++    UBSE_LOG_INFO << "UbseGetNumaMemDebtInfoWithNode success, total debtInfos=" << debtInfos.size();
+ 
+     uint32_t matchedCount = 0;
+     uint32_t recoveredCount = 0;
+@@ -856,14 +885,17 @@
+         std::unique_lock<std::shared_mutex> lock(pidInfoMutex);
+         UBSE_LOG_INFO << "current pidInfoMap size=" << pidInfoMap.size();
+         for (const auto& debtInfo : debtInfos) {
++            if (debtInfo.borrowNodeId != curNodeId) {
++                continue;
++            }
+             if (!IsProcessMemDebt(debtInfo)) {
+                 continue;
+             }
+             ++matchedCount;
+             UBSE_LOG_INFO << "recovering debt: name=" << debtInfo.name << ", size=" << debtInfo.size
+                           << ", remoteNumaId=" << debtInfo.remoteNumaId;
+-            RecoverSingleDebtInfo(pidInfoMap, debtInfo, exceptionHandleExecutor);
+             ++recoveredCount;
++            RecoverSingleDebtInfo(pidInfoMap, debtInfo, exceptionHandleExecutor);
+         }
+     }
+     UBSE_LOG_INFO << "RecoverAllDebtInfoData matched=" << matchedCount << ", recovered=" << recoveredCount;
+@@ -1005,4 +1037,4 @@
+     }
+ }
+ 
+-} // namespace process_mem::manager
++} // namespace process_mem::manager
+\ No newline at end of file
+
+--- a/src/addons/process_mem/process_mem_pid_info_manager.h	2026-06-10 16:32:09.338084903 +0800
++++ b/src/addons/process_mem/process_mem_pid_info_manager.h	2026-06-10 16:32:09.342084901 +0800
+@@ -68,7 +68,8 @@
+     void ResetPidMemBorrowInfo(pid_t pid);
+ 
+ public:
+-    ubse::task_executor::UbseTaskExecutorPtr taskExecutor{};
++    ubse::task_executor::UbseTaskExecutorPtr borrowExecutor{};
++    ubse::task_executor::UbseTaskExecutorPtr returnExecutor{};
+     ubse::task_executor::UbseTaskExecutorPtr exceptionHandleExecutor{};
+ 
+ private:
+
+--- a/src/addons/process_mem/process_mem_pid_manager_def.h	2026-06-10 16:32:09.346084900 +0800
++++ b/src/addons/process_mem/process_mem_pid_manager_def.h	2026-06-10 16:32:09.346084900 +0800
+@@ -85,6 +85,8 @@
+     ubse::mem::controller::UbseMemNumaDesc numaDesc{};
+ };
+ 
++constexpr uint16_t INVALID_REMOTE_NUMA = 0;
++
+ struct BorrowInfo {
+     int32_t remoteNumaId{-1};
+     int32_t exportSlotId{-1};                            // 导出的节点Id
+@@ -136,7 +138,7 @@
+ 
+ enum class UsrInfoPluginType : uint32_t
+ {
+-    PROCESS_MEM = 0,
++    PROCESS_MEM = 123,
+ };
+ 
+ inline const std::string PROCESS_MEM_NAME_PREFIX = "ProcessMem_";
+
+--- a/src/addons/process_mem/process_mem_pid_bridge.cpp	2026-06-10 16:32:09.350084900 +0800
++++ b/src/addons/process_mem/process_mem_pid_bridge.cpp	2026-06-10 16:32:09.354084898 +0800
+@@ -424,6 +424,10 @@
+ 
+ uint32_t ProcessMemPidBridge::Init()
+ {
++    if (!LoadMemPoolingLibrary()) {
++        return UBSE_ERROR;
++    }
++
+     std::vector<__u32> dacReadSearchCap = {CAP_DAC_READ_SEARCH};
+     ubse::security::UbseSecurityModule::ModifyEffectiveCapabilities(dacReadSearchCap, true);
+ 
+@@ -434,9 +438,6 @@
+         UBSE_LOG_ERROR << "Register IPC Handler failed, " << ubse::log::FormatRetCode(ret);
+         return ret;
+     }
+-    if (!LoadMemPoolingLibrary()) {
+-        return UBSE_ERROR;
+-    }
+ 
+     // 注册process_mem节点故障通知RPC处理器（所有节点均需注册，用于接收Master的通知）
+     auto rpcEndpoint = GetProcessMemFaultComEndpoint(
+@@ -463,4 +464,4 @@
+     return UBSE_OK;
+ }
+ 
+-} // namespace process_mem::pid::bridge
++} // namespace process_mem::pid::bridge
+\ No newline at end of file
+
+--- a/src/addons/process_mem/process_mem_pid_bridge.h	2026-06-10 16:32:09.354084898 +0800
++++ b/src/addons/process_mem/process_mem_pid_bridge.h	2026-06-10 16:32:09.358084897 +0800
+@@ -21,7 +21,7 @@
+ #include "process_mem_pid_manager_def.h"
+ 
+ namespace process_mem::pid::bridge {
+-constexpr const char* MEMPOOLING_PATH = "/usr/lib64/libmempooling.so";
++constexpr const char* MEMPOOLING_PATH = "libmempooling.so";
+ 
+ using MigrateOut = std::function<int(const std::vector<mempooling::smap::MigrateOutPayload>&, int)>;
+ using Remove = std::function<int(const uint16_t, const std::vector<pid_t>&, int)>;
