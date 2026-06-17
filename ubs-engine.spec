@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.1
-Release:        19
+Release:        20
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -214,6 +214,9 @@ mkdir -p %{buildroot}/etc/ubse/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/ubse*.conf %{buildroot}/etc/ubse/
 mkdir -p %{buildroot}/etc/ubse/plugins
 
+mkdir -p %{buildroot}/etc/ubse/topo
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/topo/*.json %{buildroot}/etc/ubse/topo/
+
 mkdir -p %{buildroot}/etc/bash_completion.d/
 cp -f %{_builddir}/%{project_dir}/scripts/command_completion/cli_commands.sh %{buildroot}/etc/bash_completion.d/
 
@@ -408,6 +411,8 @@ fi
 %dir /etc/ubse/
 %config(noreplace) /etc/ubse/ubse*.conf
 %dir /etc/ubse/plugins
+%dir /etc/ubse/topo
+%config(noreplace) /etc/ubse/topo/*.json
 %defattr(644,root,root,-)
 /etc/bash_completion.d/cli_commands.sh
 
@@ -461,6 +466,8 @@ fi
 %{_libdir}/libprocess_mem.so
 
 %changelog
+* Wed June 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.1-20
+- fix: For JD_clos_package,form 949. Date:2026/06/17
 * Wed June 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.1-19
 - fix: For 026_package,form 898. Date:2026/06/17
 * Wed June 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.1-18
