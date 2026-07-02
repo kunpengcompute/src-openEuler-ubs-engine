@@ -45,7 +45,7 @@ override_dh_auto_install:
 	install -Dm644 scripts/command_completion/cli_commands.sh debian/tmp/etc/bash_completion.d/cli_commands.sh
 
 	# Install ubs-engine-client-libs
-	install -Dm755 $(BUILD_DIR)/lib/libubse-client.so.1.0.0 debian/tmp/$(LIBDIR)/libubse-client.so.1.0.0
+	install -Dm644 $(BUILD_DIR)/lib/libubse-client.so.1.0.0 debian/tmp/$(LIBDIR)/libubse-client.so.1.0.0
 	ln -sf libubse-client.so.1.0.0 debian/tmp/$(LIBDIR)/libubse-client.so.1
 
 	# Install ubs-engine-client-dev
@@ -58,9 +58,9 @@ override_dh_auto_install:
 	python3 -m pip install . --target=./debian/tmp/usr/lib/python3/dist-packages/ubse/ --no-compile --no-deps
 
 	# Install ubs-engine-virtagent
-	install -Dm755 $(BUILD_DIR)/lib/libvirtagent.so debian/tmp/$(LIBDIR)/libvirtagent.so
-	install -Dm755 $(BUILD_DIR)/lib/libstrategy.so debian/tmp/$(LIBDIR)/libstrategy.so
-	install -Dm755 $(BUILD_DIR)/lib/libubs-virt-agent.so.1.0.0 debian/tmp/$(LIBDIR)/libubs-virt-agent.so.1.0.0
+	install -Dm644 $(BUILD_DIR)/lib/libvirtagent.so debian/tmp/$(LIBDIR)/libvirtagent.so
+	install -Dm644 $(BUILD_DIR)/lib/libstrategy.so debian/tmp/$(LIBDIR)/libstrategy.so
+	install -Dm644 $(BUILD_DIR)/lib/libubs-virt-agent.so.1.0.0 debian/tmp/$(LIBDIR)/libubs-virt-agent.so.1.0.0
 	ln -sf libubs-virt-agent.so.1.0.0 debian/tmp/$(LIBDIR)/libubs-virt-agent.so.1
 	ln -sf libubs-virt-agent.so.1 debian/tmp/$(LIBDIR)/libubs-virt-agent.so
 
@@ -71,26 +71,21 @@ override_dh_auto_install:
 	cp -r src/addons/virt_agent/sdk/include/ debian/tmp/usr/include/virt_agent/
 
 	# Install ubs-engine-ucache
-	install -Dm755 $(BUILD_DIR)/lib/libucache_plugin.so debian/tmp/$(LIBDIR)/libucache_plugin.so
+	install -Dm644 $(BUILD_DIR)/lib/libucache_plugin.so debian/tmp/$(LIBDIR)/libucache_plugin.so
 	install -Dm644 src/addons/ucache/conf/plugin_ucache.conf debian/tmp/etc/ubse/plugins/
 
 	# Install ubs-engine-rmrs
-	install -Dm755 $(BUILD_DIR)/lib/libmempooling.so debian/tmp/$(LIBDIR)/libmempooling.so
+	install -Dm644 $(BUILD_DIR)/lib/libmempooling.so debian/tmp/$(LIBDIR)/libmempooling.so
 	install -Dm644 src/addons/rmrs/conf/plugin_mempooling.conf debian/tmp/etc/ubse/plugins/
-	mkdir -p debian/tmp/usr/local/mempooling/include/mempooling/
-	install -Dm644 src/addons/rmrs/interface/mempooling_interface.h debian/tmp/usr/local/mempooling/include/mempooling/
 
 	# Install processmem
-	install -Dm755 $(BUILD_DIR)/lib/libprocess_mem.so debian/tmp/$(LIBDIR)/libprocess_mem.so
+	install -Dm644 $(BUILD_DIR)/lib/libprocess_mem.so debian/tmp/$(LIBDIR)/libprocess_mem.so
 	install -Dm644 conf/plugin_process_mem.conf debian/tmp/etc/ubse/plugins/
 
 override_dh_shlibdeps:
 	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
 
-override_dh_usrlocal:
-	@echo ">>> Skip dh_usrlocal"
-
 override_dh_fixperms:
 	dh_fixperms
-	find debian -type f -name "*.so*" -exec chmod 755 {} \;
+	find debian -type f -name "*.so*" -exec chmod 644 {} \;
 	find debian -type f -name "*.a" -exec chmod 644 {} \;
