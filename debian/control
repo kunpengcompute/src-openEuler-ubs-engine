@@ -1,7 +1,7 @@
 Source: ubs-engine
 Section: admin
 Priority: optional
-Maintainer: Huawei Technologies Co., Ltd. <support@huawei.com>
+Maintainer: zhangqin <zhangqin99@h-partners.com>
 Build-Depends: debhelper-compat (= 12),
                cmake (>= 3.22),
                make (>= 4.3),
@@ -36,21 +36,21 @@ Depends: libc6 (>= 2.34),
          libboundscheck (>= 1.1),
          libxml2 (>= 2.9),
          libssl3 (>= 3.0),
-         ubs-comm-lib,
-         libobmm1,
-         tar,
-         systemd,
+         ubs-comm-lib (>= 1.0.0-5),
+         libobmm1 (>= 1.0.1-1),
+         tar (>= 1.30),
+         systemd (>= 249),
          ${shlibs:Depends},
          ${misc:Depends}
-Pre-Depends: coreutils, passwd, systemd, libc-bin
+Pre-Depends: coreutils (>= 8.30), passwd (>= 4.8), systemd (>= 249), libc-bin (>= 2.34)
 Recommends: ubs-engine-virtagent, ubs-engine-ucache, ubs-engine-rmrs
-Description: UBS Engine
+Description: UB Service Core Engine
  UBS Engine is the core service daemon for unified base service management.
 
 Package: ubs-engine-client-libs
 Section: libs
 Architecture: arm64
-Depends: libboundscheck, libstdc++6, ${shlibs:Depends}, ${misc:Depends}
+Depends: libboundscheck (>= 1.1), libstdc++6 (>= 10.3), ${shlibs:Depends}, ${misc:Depends}
 Description: UBSE client shared library for third-party integration
  UBSE client shared library (libubse-client.so.1) for third-party
  applications to access UBSE services.
@@ -69,9 +69,9 @@ Description: Development package for UBSE client SDK
 Package: python3-ubs-engine
 Section: python
 Architecture: all
-Depends: ${python3:Depends}, ${misc:Depends}
-Description: Development package for UBSE python SDK
- Development package for UBSE python SDK.
+Depends: python3 (>= 3.9), ${python3:Depends}, ${misc:Depends}
+Description: UBS Engine python SDK
+ Development package for UBS Engine python SDK.
 
 Package: ubs-engine-virtagent
 Architecture: arm64
@@ -88,7 +88,7 @@ Description: ucache plugin
 Package: ubs-engine-rmrs
 Architecture: arm64
 Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
-Pre-Depends: coreutils, passwd
+Pre-Depends: coreutils (>= 8.30), passwd (>= 4.8)
 Description: rmrs plugin
  Package for rmrs plugin.
 
