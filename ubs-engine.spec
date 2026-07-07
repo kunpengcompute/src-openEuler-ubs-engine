@@ -7,7 +7,7 @@ Summary:        RPM package
 Name:           ubs-engine
 ExclusiveArch:  aarch64
 Version:        1.0.1
-Release:        1
+Release:        24
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -15,14 +15,14 @@ Group:          System Environment/Base
 Vendor:         Huawei Technologies Co., Ltd.
 Prefix: /usr
 
-BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3
+BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3 python3-setuptools
 BuildRequires:  glibc-devel >= 2.34 libstdc++-devel >= 10.3
 BuildRequires:  systemd-devel >= 249
-BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.27.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
+BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.40.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.1-7
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
-BuildRequires:  libvirt-devel >= 9.0
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15
+BuildRequires:  libvirt-devel >= 9.0 kernel-devel
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.40.0 ubs-comm-lib >= 1.0.1-7
 Requires: (libobmm or obmm)
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
@@ -36,6 +36,14 @@ Requires(postun): coreutils gawk util-linux systemd shadow glibc-common
 %description
 UBS Engine
 
+# ========================================================
+#                   SUBPACKAGE: ubs-engine-process-mem
+# ========================================================
+%package processmem
+Summary: processmem plugin
+Requires: %{name} = %{version}-%{release}
+%description processmem
+Development package for processmem plugin
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-client-libs
@@ -206,6 +214,9 @@ mkdir -p %{buildroot}/etc/ubse/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/ubse*.conf %{buildroot}/etc/ubse/
 mkdir -p %{buildroot}/etc/ubse/plugins
 
+mkdir -p %{buildroot}/etc/ubse/topo
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/topo/*.json %{buildroot}/etc/ubse/topo/
+
 mkdir -p %{buildroot}/etc/bash_completion.d/
 cp -f %{_builddir}/%{project_dir}/scripts/command_completion/cli_commands.sh %{buildroot}/etc/bash_completion.d/
 
@@ -222,6 +233,9 @@ ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
 mkdir -p %{buildroot}/usr/include/virt_agent
 cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
 
+#install processmem
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libprocess_mem.so %{buildroot}/usr/lib64/
+cp %{_builddir}/%{project_dir}/conf/plugin_process_mem.conf %{buildroot}/etc/ubse/plugins/
 
 #install client-libs
 cmake --install %{_builddir}/%{project_dir}/%{cmake_build_dir} \
@@ -243,6 +257,12 @@ cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libmempooling.so %{buildro
 cp %{_builddir}/%{project_dir}/src/addons/rmrs/conf/plugin_mempooling.conf %{buildroot}/etc/ubse/plugins/
 mkdir -p %{buildroot}/usr/local/mempooling/include/mempooling/
 cp %{_builddir}/%{project_dir}/src/addons/rmrs/interface/mempooling_interface.h %{buildroot}/usr/local/mempooling/include/mempooling/
+
+#install bandbridge kernel module (only on aarch64)
+%ifarch aarch64
+mkdir -p %{buildroot}/lib/modules/ubse
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/modules/bandbridge.ko %{buildroot}/lib/modules/ubse
+%endif
 
 
 #install python-sdk
@@ -346,6 +366,16 @@ chmod 750 "%{log_dir}" "%{data_dir}" "%{data_dir}/data"
 chmod 755 "%{socket_dir}"
 chmod 700 "%{cert_dir}"
 chmod 700 "%{lcne_cert_dir}"
+%ifarch aarch64
+if [ -f /lib/modules/ubse/bandbridge.ko ]; then
+    mkdir -p /lib/modules/$(uname -r)/extra
+    ln -sf /lib/modules/ubse/bandbridge.ko /lib/modules/$(uname -r)/extra/bandbridge.ko
+    depmod -a $(uname -r)
+fi
+%endif
+if [ "$ENABLE_AI" = "true" ]; then
+sed -i '/^Environment=SCENE_TYPE=/s/common/ai/' /usr/lib/systemd/system/ubse.service
+fi
 systemctl enable %{service_name}
 if [ "$MXE_SCENE" == "vm" ]; then
     update_config /etc/ubse/ubse_plugin_admission.conf
@@ -358,6 +388,12 @@ set -e
 if [ "$1" -ne 0 ]; then
     exit 0
 fi
+%ifarch aarch64
+if [ -L /lib/modules/$(uname -r)/extra/bandbridge.ko ]; then
+    modprobe -r bandbridge 2>/dev/null || true
+    rm -f /lib/modules/$(uname -r)/extra/bandbridge.ko
+fi
+%endif
 if systemctl cat %{service_name} >/dev/null 2>&1 ; then
     systemctl stop %{service_name} || true
     systemctl disable %{service_name} || true
@@ -373,6 +409,9 @@ if [ "$1" -ne 0 ]; then
 fi
 %{deleted_semaphore}
 %{remove_directory}
+%ifarch aarch64
+depmod -a $(uname -r)
+%endif
 systemctl daemon-reload
 remove_directory %{log_dir}
 remove_directory %{cert_dir}
@@ -397,8 +436,15 @@ fi
 %dir /etc/ubse/
 %config(noreplace) /etc/ubse/ubse*.conf
 %dir /etc/ubse/plugins
+%dir /etc/ubse/topo
+%config(noreplace) /etc/ubse/topo/*.json
 %defattr(644,root,root,-)
 /etc/bash_completion.d/cli_commands.sh
+%ifarch aarch64
+%defattr(644,root,root,755)
+%dir /lib/modules/ubse
+/lib/modules/ubse/bandbridge.ko
+%endif
 
 %files client-libs
 %defattr(755,root,root,-)
@@ -445,7 +491,57 @@ fi
 %defattr(644,root,root,755)
 /usr/local/mempooling/include/mempooling/
 
+%files processmem
+%config(noreplace) %{_sysconfdir}/ubse/plugins/plugin_process_mem.conf
+%{_libdir}/libprocess_mem.so
+
 %changelog
+* Sat June 27 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-24
+- fix: For 028_package,form 1037. Date:2026/06/27
+* Fri June 26 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-23
+- fix: For 027_package,form 1017. Date:2026/06/26
+* Wed June 24 2026 Zhang Kun <zhangkun125@h-partners.com> - 1.0.1-22
+- fix: For npu package,form 950. Date:2026/06/24
+* Tue June 23 2026 Yu Tao <yutao88@huawei.com> - 1.0.1-21
+- fix: For 027_package,form 990. Date:2026/06/23
+* Wed June 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.1-20
+- fix: For JD_clos_package,form 949. Date:2026/06/17
+* Wed June 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.1-19
+- fix: For 026_package,form 898. Date:2026/06/17
+* Wed June 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.1-18
+- fix: For JD_clos_package,form PR943. Date:2026/06/17
+* Tue June 16 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-17
+- fix: For 026_package,form 945. Date:2026/06/16
+* Mon June 15 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-16
+- fix: For 026_package,form 884. Date:2026/06/15
+* Mon June 15 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-15
+- fix: For 026_package,form 906. Date:2026/06/15
+* Fri June 12 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-14
+- fix: For 025_package,form 877. Date:2026/06/12
+* Tue June 9 2026 Liu Jiangqi <liuajingqi1@huawei.com> - 1.0.1-13
+- fix: For 025_package,form 834. Date:2026/06/09
+* Mon June 8 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-12
+- fix: For 021_package,form 785. Date:2026/06/08
+* Mon June 8 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-11
+- fix: For 26.1.RC1.B021_package,form PR835. Date:2026/06/08
+* Fri June 5 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-10
+- fix: For 26.1.RC1.B021_package,form PR825. Date:2026/06/05
+* Thu June 4 2026 Yu Tao <yutao88@huawei.com> - 1.0.1-9
+- fix: For 26.1.RC1.B020_package,form PR791. Date:2026/06/04
+* Wed June 3 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-8
+- fix: For 26.1.RC1.B020_package,form PR784. Date:2026/06/03
+* Tue June 2 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-7
+- fix: For 26.1.RC1.B020_package,form PR771. Date:2026/06/02
+* Tue June 2 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-6
+- fix: For 26.1.RC1.B020_package,form PR749. Date:2026/06/02
+* Tue June 2 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-5
+- fix: For 26.1.RC1.B020_package,form PR753. Date:2026/06/02
+* Sat May 30 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-4
+- fix: For 26.1.RC1.B020_package,form PR736. Date:2026/05/30
+* Wed May 27 2026 Liu Jiangqi <liuajiangqi1@huawei.com> - 1.0.1-3
+- fix: For B017 from PR721
+* Tue May 26 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-2
+- fix: For B017 from PR603
 * Mon May 25 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.1-1
 - fix: test for building SP4. Date:2026/05/25
 * Fri May 22 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-54
