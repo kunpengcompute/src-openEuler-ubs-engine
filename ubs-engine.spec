@@ -11,6 +11,7 @@ Release:        24
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
+Patch0:         001-ubse-bandbridge-vmalloc.patch
 Group:          System Environment/Base
 Vendor:         Huawei Technologies Co., Ltd.
 Prefix: /usr
@@ -195,6 +196,7 @@ fi
 
 %prep
 %setup -q -T -b 0 -c -n %{project_dir}
+%patch -P 0 -p1
 
 %build
 cd %{_builddir}/%{project_dir}/

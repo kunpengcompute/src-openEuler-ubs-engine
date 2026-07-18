@@ -1,0 +1,10 @@
+--- a/src/adapter_plugins/bandbridge/bandbridge_device.c
++++ b/src/adapter_plugins/bandbridge/bandbridge_device.c
+@@ -23,6 +23,7 @@
+ #include <linux/device.h>
+ #include <linux/fs.h>
+ #include <linux/miscdevice.h>
++#include <linux/vmalloc.h>
+ #include <linux/mm.h>
+ #include <linux/nsproxy.h>
+ #include <linux/pid_namespace.h>
