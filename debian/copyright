@@ -1,0 +1,14 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ubs-engine
+Source: https://atomgit.com/openeuler/ubs-engine
+
+Files: *
+Copyright: 2025-2026 Huawei Technologies Co., Ltd.
+License: MulanPSL-2.0
+
+License: MulanPSL-2.0
+ Mulan Permissive Software License, Version 2
+ .
+ On Debian systems, the full text of the MulanPSL-2.0 license
+ can be found at /usr/share/common-licenses/MulanPSL-2.0 or
+ at https://license.coscl.org.cn/MulanPSL2

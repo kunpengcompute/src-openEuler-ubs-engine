@@ -1,0 +1,91 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+LIBDIR = usr/lib/$(DEB_HOST_MULTIARCH)
+BUILD_DIR = cmake-build-relwithdebinfo
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	@echo ">>> Cleaning build..."
+	if [ -d cmake-build-relwithdebinfo ]; then \
+		rm -rf cmake-build-relwithdebinfo; \
+	fi
+
+override_dh_auto_configure:
+	@echo ">>> Skip configure"
+
+override_dh_auto_build:
+	@echo ">>> Building project..."
+	bash build.sh -S -c -T RelWithDebInfo
+
+override_dh_auto_test:
+	@echo ">>> Skip test"
+
+override_dh_auto_install:
+	@echo ">>> Installing to debian tmp directories..."
+
+	# Install ubs-engine
+	install -Dm755 $(BUILD_DIR)/bin/ubse debian/tmp/usr/bin/ubse
+	install -Dm755 $(BUILD_DIR)/bin/ubsectl debian/tmp/usr/bin/ubsectl
+
+	install -Dm644 scripts/rpm/ubse.service debian/tmp/usr/lib/systemd/system/ubse.service
+
+	install -Dm644 $(BUILD_DIR)/conf/ubse.conf debian/tmp/etc/ubse/ubse.conf
+	install -Dm644 $(BUILD_DIR)/conf/ubse_auth_default.conf debian/tmp/etc/ubse/ubse_auth_default.conf
+	install -Dm644 $(BUILD_DIR)/conf/ubse_plugin_admission.conf debian/tmp/etc/ubse/ubse_plugin_admission.conf
+
+	install -Dm644 scripts/command_completion/cli_commands.sh debian/tmp/etc/bash_completion.d/cli_commands.sh
+
+	# Install ubs-engine-client-libs
+	install -Dm644 $(BUILD_DIR)/lib/libubse-client.so.1.0.1 debian/tmp/$(LIBDIR)/libubse-client.so.1.0.1
+	ln -sf libubse-client.so.1.0.1 debian/tmp/$(LIBDIR)/libubse-client.so.1
+
+	# Install ubs-engine-client-dev
+	install -Dm644 $(BUILD_DIR)/lib/libubse-client.a debian/tmp/$(LIBDIR)/libubse-client.a
+	ln -sf libubse-client.so.1 debian/tmp/$(LIBDIR)/libubse-client.so
+	mkdir -p debian/tmp/usr/include
+	cp -r src/include/ debian/tmp/usr/include/ubse/
+
+	# Install python3-ubs-engine
+	python3 -m pip install . --target=./debian/tmp/usr/lib/python3/dist-packages/ubse/ --no-compile --no-deps
+
+	# Install ubs-engine-virtagent
+	install -Dm644 $(BUILD_DIR)/lib/libvirtagent.so debian/tmp/$(LIBDIR)/libvirtagent.so
+	install -Dm644 $(BUILD_DIR)/lib/libstrategy.so debian/tmp/$(LIBDIR)/libstrategy.so
+	install -Dm644 $(BUILD_DIR)/lib/libubs-virt-agent.so.1.0.1 debian/tmp/$(LIBDIR)/libubs-virt-agent.so.1.0.1
+	ln -sf libubs-virt-agent.so.1.0.1 debian/tmp/$(LIBDIR)/libubs-virt-agent.so.1
+	ln -sf libubs-virt-agent.so.1 debian/tmp/$(LIBDIR)/libubs-virt-agent.so
+
+	install -Dm644 src/addons/virt_agent/conf/plugin_virt_agent.conf debian/tmp/etc/ubse/plugins/plugin_virt_agent.conf
+	install -Dm644 src/addons/virt_agent/conf/auth-virt_agent.conf debian/tmp/etc/ubse/plugins/auth-virt_agent.conf
+
+	mkdir -p debian/tmp/usr/include
+	cp -r src/addons/virt_agent/sdk/include/ debian/tmp/usr/include/virt_agent/
+
+	# Install ubs-engine-ucache
+	install -Dm644 $(BUILD_DIR)/lib/libucache_plugin.so debian/tmp/$(LIBDIR)/libucache_plugin.so
+	install -Dm644 src/addons/ucache/conf/plugin_ucache.conf debian/tmp/etc/ubse/plugins/
+
+	# Install ubs-engine-rmrs
+	install -Dm644 $(BUILD_DIR)/lib/libmempooling.so debian/tmp/$(LIBDIR)/libmempooling.so
+	install -Dm644 src/addons/rmrs/conf/plugin_mempooling.conf debian/tmp/etc/ubse/plugins/
+
+	# Install processmem
+	install -Dm644 $(BUILD_DIR)/lib/libprocess_mem.so debian/tmp/$(LIBDIR)/libprocess_mem.so
+	install -Dm644 conf/plugin_process_mem.conf debian/tmp/etc/ubse/plugins/
+
+override_dh_shlibdeps:
+	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info
+
+override_dh_fixperms:
+	dh_fixperms
+	find debian -type f -name "*.so*" -exec chmod 644 {} \;
+	find debian -type f -name "*.a" -exec chmod 644 {} \;
