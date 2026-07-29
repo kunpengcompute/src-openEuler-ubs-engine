@@ -1,0 +1,91 @@
+#!/bin/bash
+set -e
+
+SYSTEM_USER="ubse"
+SYSTEM_GROUP="ubse"
+UBM_GROUP="ubm_nuds"
+SERVICE_NAME="ubse.service"
+
+print_error() {
+    echo "ERROR: $1" >&2
+    exit 1
+}
+
+create_user() {
+    local requested_uid=""
+    local requested_gid=""
+
+    if [ -n "${UBSE_USER_UID:-}" ]; then
+        if [[ "${UBSE_USER_UID}" =~ ^[0-9]+$ ]] && [ "$UBSE_USER_UID" -ge 0 ]; then
+            requested_uid="$UBSE_USER_UID"
+        else
+            print_error "Invalid UBSE_USER_UID: '$UBSE_USER_UID'. Must be a non-negative integer."
+        fi
+    fi
+
+    if [ -n "${UBSE_USER_GID:-}" ]; then
+        if [[ "${UBSE_USER_GID}" =~ ^[0-9]+$ ]] && [ "$UBSE_USER_GID" -ge 0 ]; then
+            requested_gid="$UBSE_USER_GID"
+        else
+            print_error "Invalid UBSE_USER_GID: '$UBSE_USER_GID'. Must be a non-negative integer."
+        fi
+    fi
+
+    local user_exists=false
+    local group_exists=false
+
+    if getent passwd "$SYSTEM_USER" > /dev/null 2>&1; then
+        user_exists=true
+    fi
+
+    if getent group "$SYSTEM_GROUP" > /dev/null 2>&1; then
+        group_exists=true
+    fi
+
+    if $user_exists; then
+        local current_uid=$(getent passwd "$SYSTEM_USER" | cut -d: -f3)
+        local current_gid=$(getent passwd "$SYSTEM_USER" | cut -d: -f4)
+        if [ -n "$requested_uid" ] && [ "$current_uid" != "$requested_uid" ]; then
+            print_error "User $SYSTEM_USER exists with UID $current_uid, but requested UID is $requested_uid."
+        fi
+        if [ -n "$requested_gid" ] && [ "$current_gid" != "$requested_gid" ]; then
+            print_error "User $SYSTEM_USER exists with GID $current_gid, but requested GID is $requested_gid."
+        fi
+    fi
+
+    if $group_exists; then
+        local current_gid=$(getent group "$SYSTEM_GROUP" | cut -d: -f3)
+        if [ -n "$requested_gid" ] && [ "$current_gid" != "$requested_gid" ]; then
+            print_error "Group $SYSTEM_GROUP exists with GID $current_gid, but requested GID is $requested_gid."
+        fi
+    fi
+
+    if ! $group_exists; then
+        if [ -n "$requested_gid" ]; then
+            groupadd -r -g "$requested_gid" "$SYSTEM_GROUP" || print_error "Failed to create group $SYSTEM_GROUP"
+        else
+            groupadd -r "$SYSTEM_GROUP" || print_error "Failed to create group $SYSTEM_GROUP"
+        fi
+    fi
+
+    if ! $user_exists; then
+        local user_args=(-r -g "$SYSTEM_GROUP" -s /usr/sbin/nologin)
+        if [ -n "$requested_uid" ]; then
+            user_args+=(-u "$requested_uid")
+        fi
+        useradd "${user_args[@]}" "$SYSTEM_USER" || print_error "Failed to create user $SYSTEM_USER"
+    fi
+}
+
+if systemctl cat "$SERVICE_NAME" >/dev/null 2>&1; then
+    systemctl stop "$SERVICE_NAME" || true
+    systemctl disable "$SERVICE_NAME" || true
+fi
+
+create_user
+
+if getent group "$UBM_GROUP" > /dev/null 2>&1; then
+    usermod -aG "$UBM_GROUP" "$SYSTEM_USER"
+else
+    echo "[WARN] Group '$UBM_GROUP' not found. User '$SYSTEM_USER' was not added to this group."
+fi

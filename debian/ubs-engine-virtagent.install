@@ -1,0 +1,8 @@
+/etc/ubse/plugins/plugin_virt_agent.conf
+/etc/ubse/plugins/auth-virt_agent.conf
+/usr/lib/aarch64-linux-gnu/libvirtagent.so
+/usr/lib/aarch64-linux-gnu/libstrategy.so
+/usr/lib/aarch64-linux-gnu/libubs-virt-agent.so.1.0.1
+/usr/lib/aarch64-linux-gnu/libubs-virt-agent.so.1
+/usr/lib/aarch64-linux-gnu/libubs-virt-agent.so
+/usr/include/virt_agent/

@@ -1,0 +1,43 @@
+#!/bin/bash
+set -e
+
+SYSTEM_USER="ubse"
+SYSTEM_GROUP="ubse"
+LOG_DIR="/var/log/ubse"
+DATA_DIR="/var/lib/ubse"
+CERT_DIR="/var/lib/ubse/cert"
+LCNE_CERT_DIR="/var/lib/ubse/lcne_cert"
+SOCKET_DIR="/var/run/ubse"
+
+deleted_semaphore() {
+    echo "Checking and deleting semaphores..."
+    while read -r semid owner; do
+        if [ "$owner" = "$SYSTEM_USER" ]; then
+            ipcrm -s "$semid" 2>/dev/null || true
+        fi
+    done < <(ipcs -s 2>/dev/null | awk '/^[0-9]/ {print $2, $3}' || true)
+}
+
+remove_directory() {
+    if [ -d "$1" ]; then
+        rm -rf "$1"
+    fi
+}
+
+if [ "$1" = "purge" ]; then
+    systemctl daemon-reload 2>/dev/null || true
+
+    deleted_semaphore
+
+    remove_directory "$LOG_DIR"
+    remove_directory "$CERT_DIR"
+    remove_directory "$SOCKET_DIR"
+    remove_directory "$LCNE_CERT_DIR"
+
+    if id "$SYSTEM_USER" &>/dev/null; then
+        userdel -r "$SYSTEM_USER" 2>/dev/null || true
+    fi
+    if getent group "$SYSTEM_GROUP" &>/dev/null; then
+        groupdel "$SYSTEM_GROUP" 2>/dev/null || true
+    fi
+fi

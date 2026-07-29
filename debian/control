@@ -1,0 +1,99 @@
+Source: ubs-engine
+Section: admin
+Priority: optional
+Maintainer: zhangqin <zhangqin99@h-partners.com>
+Build-Depends: debhelper-compat (= 12),
+               cmake (>= 3.22),
+               make (>= 4.3),
+               g++ (>= 10.3),
+               gcc (>= 10.3),
+               libc6-dev (>= 2.34),
+               libstdc++-dev,
+               libsystemd-dev (>= 249),
+               libboundscheck (>= 1.1),
+               libxml2-dev (>= 2.9),
+               libssl-dev (>= 3.0),
+               rapidjson-dev (>= 1.1.0),
+               libnuma1 (>= 2.0),
+               ninja-build (>= 1.10),
+               bash, bc, coreutils, sudo, patch,
+               libvirt-devel,
+               ubs-comm-dev,
+               dh-python,
+               python3-all,
+               python3-setuptools,
+               dos2unix
+Standards-Version: 4.6.2
+Homepage: https://atomgit.com/openeuler/ubs-engine
+Vcs-Browser: https://atomgit.com/openeuler/ubs-engine
+Rules-Requires-Root: no
+
+Package: ubs-engine
+Architecture: arm64
+Depends: libc6 (>= 2.34),
+         libgcc-s1 (>= 10.3),
+         libstdc++6 (>= 10.3),
+         libboundscheck (>= 1.1),
+         libxml2 (>= 2.9),
+         libssl3 (>= 3.0),
+         ubs-comm-lib (>= 1.0.0-5),
+         libobmm1 (>= 1.0.1-1),
+         tar (>= 1.30),
+         systemd (>= 249),
+         ${shlibs:Depends},
+         ${misc:Depends}
+Pre-Depends: coreutils (>= 8.30), passwd (>= 4.8), systemd (>= 249), libc-bin (>= 2.34)
+Recommends: ubs-engine-virtagent, ubs-engine-ucache, ubs-engine-rmrs
+Description: UB Service Core Engine
+ UBS Engine is the core service daemon for unified base service management.
+
+Package: ubs-engine-client-libs
+Section: libs
+Architecture: arm64
+Depends: libboundscheck (>= 1.1), libstdc++6 (>= 10.3), ${shlibs:Depends}, ${misc:Depends}
+Description: UBSE client shared library for third-party integration
+ UBSE client shared library (libubse-client.so.1) for third-party
+ applications to access UBSE services.
+ This package contains the runtime shared library required by programs
+ that dynamically link to UBSE.
+
+Package: ubs-engine-client-dev
+Section: libdevel
+Architecture: arm64
+Depends: ubs-engine-client-libs (= ${binary:Version}), ${misc:Depends}
+Description: Development package for UBSE client SDK
+ Header files and static libraries for developing applications that use
+ the UBSE client SDK.
+ This package is required for compiling programs that link against UBSE.
+
+Package: python3-ubs-engine
+Section: python
+Architecture: all
+Depends: python3 (>= 3.9), ${python3:Depends}, ${misc:Depends}
+Description: UBS Engine python SDK
+ Development package for UBS Engine python SDK.
+
+Package: ubs-engine-virtagent
+Architecture: arm64
+Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: virtagent plugin
+ Package for virt_agent plugin.
+
+Package: ubs-engine-ucache
+Architecture: arm64
+Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: ucache plugin
+ Package for ucache plugin.
+
+Package: ubs-engine-rmrs
+Architecture: arm64
+Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Pre-Depends: coreutils (>= 8.30), passwd (>= 4.8)
+Description: rmrs plugin
+ Package for rmrs plugin.
+
+Package: ubs-engine-processmem
+Architecture: arm64
+Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: processmem plugin
+ Package for processmem plugin.
