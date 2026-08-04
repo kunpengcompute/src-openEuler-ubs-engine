@@ -1,0 +1,38 @@
+From 13e7c5f0b1756a36419dfe25f507f665f671a14b Mon Sep 17 00:00:00 2001
+From: builder <builder@local>
+Date: Tue, 4 Aug 2026 19:14:49 +0800
+Subject: [PATCH] force include bits/stdc++.h to fix GCC 13+ transitive include
+ removal
+
+Ubuntu 24.04 / openEuler 24.03 ship GCC 13/14 with libstdc++ that
+removed many transitive includes (cstdint, string, vector, map, ...).
+Hundreds of source files use these std types without directly including
+the corresponding headers, causing compilation errors such as:
+- incomplete type 'uint32_t' (missing <cstdint>)
+- incomplete type 'std::string' (missing <string>)
+
+Fix all at once by force-including <bits/stdc++.h> (GCC umbrella header
+that pulls in every standard C++ header) for C++ translation units, and
+<stdint.h> for C translation units, via CMake generator expressions in
+add_compile_options.
+---
+ scripts/cmake/building.cmake | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/scripts/cmake/building.cmake b/scripts/cmake/building.cmake
+index 717283e..ab64189 100644
+--- a/scripts/cmake/building.cmake
++++ b/scripts/cmake/building.cmake
+@@ -1,6 +1,10 @@
+ add_compile_options(
+         -fPIC                                           # 实现动态库随机加载
+         -fstack-protector-strong                        # 启用栈保护，防止栈溢出攻击
++        $<$<COMPILE_LANGUAGE:C>:-include>               # 强制包含 stdint.h，修复 GCC 13+/libstdc++ 移除传递性包含
++        $<$<COMPILE_LANGUAGE:C>:stdint.h>
++        $<$<COMPILE_LANGUAGE:CXX>:-include>             # 强制包含 bits/stdc++.h，修复 GCC 13+/libstdc++ 移除传递性包含
++        $<$<COMPILE_LANGUAGE:CXX>:bits/stdc++.h>        # 涵盖 cstdint/string/vector/map 等全部标准头
+         $<$<NOT:$<CONFIG:Debug>>:-D_FORTIFY_SOURCE=2>   # 非 Debug 模式下启用源代码强化（fortification）级别 2
+         $<$<CONFIG:Debug>:-ftrapv>                      # Debug 模式下检测整数溢出（性能影响较大）
+         $<$<CONFIG:Debug>:-fstack-check>                # Debug 模式下检查栈空间（性能影响较大）
+--
+2.48.1.windows.1
