@@ -1,0 +1,43 @@
+From 7a3c2f5e8b1d4092c6a5e8f7d2b1a3c4e5f6a7b8 Mon Sep 17 00:00:00 2001
+From: Trae <trae@local>
+Date: Thu, 14 Aug 2026 10:00:00 +0800
+Subject: [PATCH] fix(rmrs): dlopen改为在系统路径中搜索libubturbo_client.so
+
+rmrs模块中mempooling_message和smap两处使用硬编码的绝对路径
+/usr/lib64/libubturbo_client.so 调用dlopen，导致在aarch64-deb等
+非/usr/lib64标准库路径环境下无法加载so。改为仅传库名
+libubturbo_client.so，由动态链接器在标准系统路径中搜索，与
+rmrs_libvirt_module.cpp中dlopen("libvirt.so.0")的写法保持一致。
+
+---
+ .../rmrs/common/message/mempooling_message.h        | 2 +-
+ .../rmrs/common/smap/mp_smap_module.h               | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h b/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h
+--- a/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h
++++ b/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h
+@@ -23,7 +23,7 @@
+
+ namespace mempooling::message {
+
+-const char* const libubturbo_client_PATH = "/usr/lib64/libubturbo_client.so";
++const char* const libubturbo_client_PATH = "libubturbo_client.so";
+
+ const uint32_t OPCODE_COMMON = 13;
+ const uint32_t OPCODE_MIGRATE_STRATEGY = 14;
+diff --git a/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h b/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h
+--- a/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h
++++ b/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h
+@@ -19,7 +19,7 @@
+ #include "mp_error.h"
+
+ namespace mempooling::smap {
+-const char* const SMAP_LIBSMAPSO_PATH = "/usr/lib64/libubturbo_client.so";
++const char* const SMAP_LIBSMAPSO_PATH = "libubturbo_client.so";
+ const uint32_t PAGE_TYPE = 1;
+ const int RUN_MODE_VM = 0;
+ const int RUN_MODE_MP = 1;
+--
+2.54.0
+
