@@ -14,9 +14,9 @@ rmrs_libvirt_module.cpp中dlopen("libvirt.so.0")的写法保持一致。
  .../rmrs/common/smap/mp_smap_module.h               | 2 +-
  2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h b/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h
---- a/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h
-+++ b/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.h
+diff --git a/src/addons/rmrs/common/message/mempooling_message.h b/src/addons/rmrs/common/message/mempooling_message.h
+--- a/src/addons/rmrs/common/message/mempooling_message.h
++++ b/src/addons/rmrs/common/message/mempooling_message.h
 @@ -23,7 +23,7 @@
 
  namespace mempooling::message {
@@ -26,9 +26,9 @@ diff --git a/ubs-engine-1.0.0/src/addons/rmrs/common/message/mempooling_message.
 
  const uint32_t OPCODE_COMMON = 13;
  const uint32_t OPCODE_MIGRATE_STRATEGY = 14;
-diff --git a/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h b/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h
---- a/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h
-+++ b/ubs-engine-1.0.0/src/addons/rmrs/common/smap/mp_smap_module.h
+diff --git a/src/addons/rmrs/common/smap/mp_smap_module.h b/src/addons/rmrs/common/smap/mp_smap_module.h
+--- a/src/addons/rmrs/common/smap/mp_smap_module.h
++++ b/src/addons/rmrs/common/smap/mp_smap_module.h
 @@ -19,7 +19,7 @@
  #include "mp_error.h"
 
