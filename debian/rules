@@ -36,7 +36,7 @@ override_dh_auto_install:
 	install -Dm755 $(BUILD_DIR)/bin/ubse debian/tmp/usr/bin/ubse
 	install -Dm755 $(BUILD_DIR)/bin/ubsectl debian/tmp/usr/bin/ubsectl
 
-	install -Dm644 scripts/rpm/ubse.service debian/tmp/usr/lib/systemd/system/ubse.service
+	sed 's/\r$$//' scripts/rpm/ubse.service | install -Dm644 /dev/stdin debian/tmp/usr/lib/systemd/system/ubse.service
 
 	install -Dm644 $(BUILD_DIR)/conf/ubse.conf debian/tmp/etc/ubse/ubse.conf
 	install -Dm644 $(BUILD_DIR)/conf/ubse_auth_default.conf debian/tmp/etc/ubse/ubse_auth_default.conf
