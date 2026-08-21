@@ -1,0 +1,3 @@
+0001-fix-cmakelist-for-deb.patch
+0002-force-include-cstdint-for-gcc14.patch
+0003-fix-rmrs-dlopen-system-path.patch

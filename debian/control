@@ -21,8 +21,7 @@ Build-Depends: debhelper-compat (= 12),
                ubs-comm-dev,
                dh-python,
                python3-all,
-               python3-setuptools,
-               dos2unix
+               python3-setuptools
 Standards-Version: 4.6.2
 Homepage: https://atomgit.com/openeuler/ubs-engine
 Vcs-Browser: https://atomgit.com/openeuler/ubs-engine
