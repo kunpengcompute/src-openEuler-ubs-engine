@@ -1,0 +1,18 @@
+add_ut(ubse_mti)
+target_link_libraries(ubs-engine_ubse_mti_ut
+        PRIVATE
+        ubse_mti
+        ubse_election
+        ubse_xml
+        ubse_utils
+        ubse_com
+        ubse_context
+        ubse_log
+        ubse_http
+        ubse_config
+        ubse_event
+        mti_out_of_band
+        ubse_node_controller
+        ubse_ras
+        syssentry
+)

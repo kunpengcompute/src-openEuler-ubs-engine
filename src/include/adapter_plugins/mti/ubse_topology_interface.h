@@ -1,0 +1,95 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+ * ubs-engine is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
+#ifndef UBSE_TOPOLOGY_INTERFACE_H
+#define UBSE_TOPOLOGY_INTERFACE_H
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include "ubse_error.h"
+#include "ubse_mti_def.h"
+
+namespace ubse::mti {
+using namespace ubse::adapter_plugins::mti;
+
+// 查询节点信息
+enum class DevType
+{
+    SSU = 0,
+    DPU = 1,
+    CPU = 2,
+    NPU = 3,
+    ALL
+};
+
+enum class DevStatus
+{
+    normal
+};
+
+struct UbseLcneIODieInfo {
+    // IODie级别数据
+    std::string ubControllerEid; // IOdie的Eid
+    std::string guid;            // IOdie的guid
+    std::string upi;             // IOdie的upi
+    std::string primaryCna;      // IOdie的Cna
+    std::string chipTypeStr;     // IOdie的设备的类型
+    UbseDevType chipType;        // IOdie的设备的类型
+    std::string chipStatusStr;   // IOdie的状态
+    DevStatus chipStatus;        // IOdie的状态表示
+};
+
+// 查询Host信息
+enum class LogicEntityType
+{
+    host,
+    guest,
+};
+
+enum class LogicEntityStatus
+{
+    online,
+    offline,
+};
+
+struct UbseLcneOSInfo {
+    std::string busInstanceEid;          // OS的Eid
+    std::string guid;                    // OS的guid
+    LogicEntityType logicEntityType;     // 主机或者虚机
+    std::string upi;                     // OS的upi
+    LogicEntityStatus logicEntityStatus; // OS的状态
+};
+
+// 查询节点物理上bus instance信息
+struct UbseLcneBusInstanceInfo {
+    std::string hostBusinstanceEid;
+    std::string localNodeId; // 当前节点的nodeid
+    std::string localSlotId; // 当前节点的slotid
+};
+
+/**
+ * @brief 获取LCNE提供的本节点信息
+ * @param [out] ubseNodeInfo: 当前节点信息
+ * @return 成功返回0, 失败返回非0
+ */
+uint32_t UbseGetLocalNodeInfo(UbseMtiNodeInfo& ubseNodeInfo);
+
+/**
+ * @brief 获取LCNE感知的集群信息
+ * @param [out] ubseNodeInfos: 整个集群节点信息
+ * @return 成功返回0, 失败返回非0
+ */
+uint32_t UbseGetAllNodeInfos(std::vector<UbseMtiNodeInfo>& ubseNodeInfos);
+} // namespace ubse::mti
+#endif // UBSE_TOPOLOGY_INTERFACE_H

@@ -5,9 +5,8 @@
 # -*- rpm-spec -*-
 Summary:        RPM package
 Name:           ubs-engine
-ExclusiveArch:  aarch64
-Version:        1.0.0
-Release:        44
+Version:        1.0.1
+Release:        1
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
@@ -15,13 +14,14 @@ Group:          System Environment/Base
 Vendor:         Huawei Technologies Co., Ltd.
 Prefix: /usr
 
-BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3
+BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3 python3-setuptools
 BuildRequires:  glibc-devel >= 2.34 libstdc++-devel >= 10.3
 BuildRequires:  systemd-devel >= 249
-BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.27.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15
+BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.40.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.1-7
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.27.0 ubs-comm-lib >= 1.0.0-15 libobmm
+BuildRequires:  libvirt-devel >= 9.0 kernel-devel
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.40.0 ubs-comm-lib >= 1.0.1-7 obmm
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
 Requires(post): coreutils gawk util-linux systemd grep sed
@@ -34,6 +34,14 @@ Requires(postun): coreutils gawk util-linux systemd shadow glibc-common
 %description
 UBS Engine
 
+# ========================================================
+#                   SUBPACKAGE: ubs-engine-process-mem
+# ========================================================
+%package processmem
+Summary: processmem plugin
+Requires: %{name} = %{version}-%{release}
+%description processmem
+Development package for processmem plugin
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-client-libs
@@ -45,6 +53,7 @@ UBS Engine
 Summary: UBSE client shared library for third-party integration
 Provides: %{lib_name}.so.%{lib_soversion}
 Requires: libboundscheck, libstdc++
+Conflicts: %{name} < %{version}-%{release}
 Obsoletes: %{name}-client-libs < %{version}-%{release}
 Provides: %{name}-client-libs = %{version}-%{release}
 
@@ -83,7 +92,7 @@ Development package for UBSE python SDK
 Summary: virtagent plugin
 Requires: %{name} = %{version}-%{release}
 %description virtagent
-Development package for virtagent plugin
+Package for virt_agent plugin
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-ucache
@@ -124,7 +133,6 @@ fi
 %define system_user ubse
 %define system_group ubse
 %define ubm_group ubm_nuds
-%define ubturbo_group ubturbo
 %define service_name ubse.service
 
 %define ensure_directory_owner() ensure_directory_owner() { \
@@ -166,14 +174,14 @@ fi
     if grep -q '^# mempooling=777' "$config_file"; then \
         sed -i 's/^# mempooling=777/mempooling=777/' "$config_file" \
     fi \
-    if grep -q '^# vm=205' "$config_file"; then \
-        sed -i 's/^# vm=205/vm=205/' "$config_file" \
+    if grep -q '^# virt_agent=205' "$config_file"; then \
+        sed -i 's/^# virt_agent=205/virt_agent=205/' "$config_file" \
     fi \
     if ! grep -q 'mempooling=777' "$config_file"; then \
         echo "mempooling=777" >> "$config_file" \
     fi \
-    if ! grep -q 'vm=205' "$config_file"; then \
-        echo "vm=205" >> "$config_file" \
+    if ! grep -q 'virt_agent=205' "$config_file"; then \
+        echo "virt_agent=205" >> "$config_file" \
     fi \
 }
 
@@ -205,28 +213,34 @@ mkdir -p %{buildroot}/etc/ubse/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/ubse*.conf %{buildroot}/etc/ubse/
 mkdir -p %{buildroot}/etc/ubse/plugins
 
+mkdir -p %{buildroot}/etc/ubse/topo
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/topo/*.json %{buildroot}/etc/ubse/topo/
+
 mkdir -p %{buildroot}/etc/bash_completion.d/
 cp -f %{_builddir}/%{project_dir}/scripts/command_completion/cli_commands.sh %{buildroot}/etc/bash_completion.d/
 
 mkdir -p %{buildroot}/usr/lib64
 
 #install virtagent
-cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvm.so %{buildroot}/usr/lib64/
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvirtagent.so %{buildroot}/usr/lib64/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libstrategy.so %{buildroot}/usr/lib64/
-cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_vm.conf %{buildroot}/etc/ubse/plugins/
-cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virtagent.conf %{buildroot}/etc/ubse/plugins/
-cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/
-ln -sf libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/libubs-virt-agent.so.1
+cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_virt_agent.conf %{buildroot}/etc/ubse/plugins/
+cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virt_agent.conf %{buildroot}/etc/ubse/plugins/
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.%{version} %{buildroot}/usr/lib64/
+ln -sf libubs-virt-agent.so.%{version} %{buildroot}/usr/lib64/libubs-virt-agent.so.1
 ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
-mkdir -p %{buildroot}/usr/include/virtagent
-cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virtagent/
+mkdir -p %{buildroot}/usr/include/virt_agent
+cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
 
+#install processmem
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libprocess_mem.so %{buildroot}/usr/lib64/
+cp %{_builddir}/%{project_dir}/conf/plugin_process_mem.conf %{buildroot}/etc/ubse/plugins/
 
 #install client-libs
 cmake --install %{_builddir}/%{project_dir}/%{cmake_build_dir} \
     --component ubse_sdk \
     --prefix %{buildroot}/usr
-ln -sf libubse-client.so.1.0.0 %{buildroot}/usr/lib64/libubse-client.so.1
+ln -sf libubse-client.so.%{version} %{buildroot}/usr/lib64/libubse-client.so.1
 
 #install client-devel
 ln -sf libubse-client.so.1 %{buildroot}/usr/lib64/libubse-client.so
@@ -242,6 +256,12 @@ cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libmempooling.so %{buildro
 cp %{_builddir}/%{project_dir}/src/addons/rmrs/conf/plugin_mempooling.conf %{buildroot}/etc/ubse/plugins/
 mkdir -p %{buildroot}/usr/local/mempooling/include/mempooling/
 cp %{_builddir}/%{project_dir}/src/addons/rmrs/interface/mempooling_interface.h %{buildroot}/usr/local/mempooling/include/mempooling/
+
+#install bandbridge kernel module (only on aarch64)
+%ifarch aarch64
+mkdir -p %{buildroot}/lib/modules/ubse
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/modules/bandbridge.ko %{buildroot}/lib/modules/ubse
+%endif
 
 
 #install python-sdk
@@ -329,12 +349,6 @@ else
     echo "[WARN] Group '%{ubm_group}' not found. User '%{system_user}' was not added to this group. If UBM is required, please install the corresponding package and run: usermod -aG %{ubm_group} %{system_user}"
 fi
 
-if getent group %{ubturbo_group} > /dev/null; then
-    sudo usermod -aG %{ubturbo_group} %{system_user}
-else
-    echo "[WARN] Group '%{ubturbo_group}' does not exist. Skipping usermod for '%{system_user}'."
-fi
-
 %post
 set -e
 %{ensure_directory_owner}
@@ -351,6 +365,16 @@ chmod 750 "%{log_dir}" "%{data_dir}" "%{data_dir}/data"
 chmod 755 "%{socket_dir}"
 chmod 700 "%{cert_dir}"
 chmod 700 "%{lcne_cert_dir}"
+%ifarch aarch64
+if [ -f /lib/modules/ubse/bandbridge.ko ]; then
+    mkdir -p /lib/modules/$(uname -r)/extra
+    ln -sf /lib/modules/ubse/bandbridge.ko /lib/modules/$(uname -r)/extra/bandbridge.ko
+    depmod -a $(uname -r)
+fi
+%endif
+if [ "$ENABLE_AI" = "true" ]; then
+ 	sed -i '/^Environment=SCENE_TYPE=/s/common/ai/' /usr/lib/systemd/system/ubse.service
+fi
 systemctl enable %{service_name}
 if [ "$MXE_SCENE" == "vm" ]; then
     update_config /etc/ubse/ubse_plugin_admission.conf
@@ -363,6 +387,12 @@ set -e
 if [ "$1" -ne 0 ]; then
     exit 0
 fi
+%ifarch aarch64
+if [ -L /lib/modules/$(uname -r)/extra/bandbridge.ko ]; then
+    modprobe -r bandbridge 2>/dev/null || true
+    rm -f /lib/modules/$(uname -r)/extra/bandbridge.ko
+fi
+%endif
 if systemctl cat %{service_name} >/dev/null 2>&1 ; then
     systemctl stop %{service_name} || true
     systemctl disable %{service_name} || true
@@ -378,6 +408,9 @@ if [ "$1" -ne 0 ]; then
 fi
 %{deleted_semaphore}
 %{remove_directory}
+%ifarch aarch64
+depmod -a $(uname -r)
+%endif
 systemctl daemon-reload
 remove_directory %{log_dir}
 remove_directory %{cert_dir}
@@ -402,12 +435,19 @@ fi
 %dir /etc/ubse/
 %config(noreplace) /etc/ubse/ubse*.conf
 %dir /etc/ubse/plugins
+%dir /etc/ubse/topo
+%config(noreplace) /etc/ubse/topo/*.json
 %defattr(644,root,root,-)
 /etc/bash_completion.d/cli_commands.sh
+%ifarch aarch64
+%defattr(644,root,root,755)
+%dir /lib/modules/ubse
+/lib/modules/ubse/bandbridge.ko
+%endif
 
 %files client-libs
 %defattr(755,root,root,-)
-/usr/lib64/libubse-client.so.1.0.0
+/usr/lib64/libubse-client.so.%{version}
 %defattr(-,root,root,-)
 /usr/lib64/libubse-client.so.1
 
@@ -424,17 +464,17 @@ fi
 
 %files virtagent
 %defattr(644,root,root,-)
-%config(noreplace) /etc/ubse/plugins/plugin_vm.conf
-%config(noreplace) /etc/ubse/plugins/auth-virtagent.conf
+%config(noreplace) /etc/ubse/plugins/plugin_virt_agent.conf
+%config(noreplace) /etc/ubse/plugins/auth-virt_agent.conf
 %defattr(755,root,root,-)
-/usr/lib64/libvm.so
+/usr/lib64/libvirtagent.so
 /usr/lib64/libstrategy.so
-/usr/lib64/libubs-virt-agent.so.1.0.0
+/usr/lib64/libubs-virt-agent.so.%{version}
 %defattr(-,root,root,-)
 /usr/lib64/libubs-virt-agent.so.1
 /usr/lib64/libubs-virt-agent.so
 %defattr(644,root,root,755)
-/usr/include/virtagent/
+/usr/include/virt_agent/
 
 %files ucache
 %defattr(644,root,root,-)
@@ -450,92 +490,6 @@ fi
 %defattr(644,root,root,755)
 /usr/local/mempooling/include/mempooling/
 
-%changelog
-* Sat April 25 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-44
-- fix: For JD_clos_package,form PR493
-* Sat April 25 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-43
-- fix: For B006_package,form PR488
-* Thu April 23 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-42
-- fix: For B006_package,form PR474
-* Thu April 23 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-41
-- fix: For B006_package,form PR470
-* Wed April 22 2026 YONG WENTAO <yongwentao@huawei.com> - 1.0.0-40
-- fix: For B006_package,form PR463
-* Tue April 21 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-39
-- fix: For B006_package,form PR450
-* Tue April 21 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-38
-- feat: 三方库依赖修改为依赖系统库的方式,form PR432
-* Sat April 18 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-37
-- fix: For JD_clos_package,form PR430
-* Fri April 17 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-36
-- feat: update mti interfaces to adapt cross pod
-* Thu April 16 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-35
-- fix: For B005_package,form PR377
-* Thu April 16 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-34
-- feat: support clos mesh type in container network
-* Thu April 16 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-33
-- fix: For B005_package,form PR406
-* Mon April 13 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-32
-- fix: Change bonding name from urma_x to bonding_dev_x
-* Fri April 10 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-31
-- fix: For B003_package,form PR365
-* Thu April 09 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-30
-- fix: For B003_package,form PR359
-* Thu April 09 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-29
-- fix: For B003_package,form PR330
-* Wed April 08 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-28
-- fix: For B003_package,form PR347
-* Tue April 07 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-27
-- fix: For B003_package,form PR333
-* Thu April 02 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-26
-- fix: Specify bonding name corresponding to urma info name when create bonding dev
-* Wed April 01 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-25
-- fix: High-safety bug
-* Wed April 01 2026 YONG WENTAO <yongwentao@huawei.com> - 1.0.0-24
-- fix: optimize alloc sdk invocation
-* Sat Mar 28 2026 Fang JieDong <fangjiedong@h-partners.com> - 1.0.0-23
-- fix: pull/289/commit
-* Tue Mar 24 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-22
-- fix: fixdebug
-* Sun Mar 22 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-21
-- fix: fix rollback 
-* Thu Mar 19 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-20
-- fix: fix rmrs multiNuma conf 
-* Thu Mar 19 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-19
-- fix: reduce threads
-* Wed Mar 18 2026 Zhang Qin <zhangqin99@h-partners.com> - 1.0.0-18
-- fix: reduce threads
-* Tue Mar 18 2026 Li Yucheng <liyucheng22@huawei.com> - 1.0.0-17
-- fix: fix rmrs bugs
-* Tue Mar 17 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-16
-- fix: fix ubse start
-* Tue Mar 17 2026 CAO YIFAN <caoyifan9@huawei.com> - 1.0.0-15
-- fix: fix ucache/rmrs spec
-* Tue Mar 17 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-14
-- feat: ipover URMA
-* Mon Mar 16 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-13
-- feat: add virt & rmrs rpm package
-* Sat Mar 14 2026 LI LISONG <lilisong2@huawei.com> - 1.0.0-12
-- feat: sync yellow zone code
-* Wed Mar 04 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-11
-- feat: update UBM listen port
-* Tue March 03 2026 YONG WENTAO <yongwentao@huawei.com> - 1.0.0-10
-- urma cli deleting type
-* Thu Feb 26 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-9
-- feat: provide hardware resource id in sdk
-* Wed Feb 25 2026 Zhang Qin <zhangqin99@h-partners.com> - 1.0.0-8
-- feat: update ubs-engine-1.0.0.tar.gz
-* Tue Feb 24 2026 Zhu Qiucheng <zhuqiucheng@huawei.com> - 1.0.0-7
-- feat(urma): support urma bounding
-* Wed Feb 11 2026 Zhang Qin <zhangqin99@h-partners.com> - 1.0.0-6
-- fix: update ubs-engine-1.0.0.tar.gz
-* Wed Dec 10 2025 LI LISONG <lilisong2@huawei.com> - 1.0.0-5
-- fix: update ubs-engine-1.0.0.tar.gz
-* Tue Dec 09 2025 Wang Haoping <wanghaoping1@huawei.com> - 1.0.0-4
-- fix(mem): fix bug of mti for mami
-* Mon Dec 08 2025 LI LISONG <lilisong2@huawei.com> - 1.0.0-3
-- fix bug of function "GetAllHandle" and Lcne
-* Sat Dec 06 2025 LI LISONG <lilisong2@huawei.com> - 1.0.0-2
-- lcne support updated UB protocol
-* Wed Nov 26 2025 Yu Yaodong <yuyaodong2@huawei.com> - 1.0.0-1
-- Package init
+%files processmem
+%config(noreplace) %{_sysconfdir}/ubse/plugins/plugin_process_mem.conf
+%{_libdir}/libprocess_mem.so

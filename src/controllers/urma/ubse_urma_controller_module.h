@@ -1,0 +1,34 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+ * ubs-engine is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *          http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
+#ifndef UBSE_URMA_CONTROLLER_MODULE_H
+#define UBSE_URMA_CONTROLLER_MODULE_H
+
+#include "ubse_error.h"
+#include "ubse_logger_module.h"
+#include "ubse_module.h"
+
+namespace ubse::urmaController {
+
+class UbseUrmaControllerModule : public ubse::module::UbseModule {
+public:
+    ubse::common::def::UbseResult Initialize() override;
+    void UnInitialize() override;
+    ubse::common::def::UbseResult Start() override;
+    void Stop() override;
+
+private:
+    bool enabled_ = true;
+};
+} // namespace ubse::urmaController
+
+#endif // UBSE_URMA_CONTROLLER_MODULE_H

@@ -1,0 +1,6 @@
+add_subdirectory(syssentry)
+add_subdirectory(mti)
+add_subdirectory(mmi)
+add_subdirectory(urma_uvs)
+add_subdirectory(mti/smbios)
+add_subdirectory(bandbridge)
