@@ -1,0 +1,42 @@
+From: Trae <trae@local>
+Subject: [PATCH] use local cpp-httplib header instead of FetchContent
+Forwarded: not-needed
+
+针对 Debian 打包场景的定制化修改：将 cpp-httplib 的
+SOURCE_COMPILING 分支从 FetchContent 联网拉取源码改为直接使用
+3rdparty/cpp-httplib/source/httplib.h（由 0004 patch 内嵌进来，
+版本 v0.46.0），避免构建时需要访问外网，也规避系统
+cpp-httplib-dev 版本不满足 >=0.40.0 的问题。
+
+diff --git a/3rdparty/cpp-httplib/CMakeLists.txt b/3rdparty/cpp-httplib/CMakeLists.txt
+index 52c687e..bdcc1f5 100644
+--- a/3rdparty/cpp-httplib/CMakeLists.txt
++++ b/3rdparty/cpp-httplib/CMakeLists.txt
+@@ -16,22 +16,16 @@ if((NOT CPPHTTPLIB_INCLUDE_DIR OR NOT CPPHTTPLIB_LIBRARY) AND NOT SOURCE_COMPILI
+ endif()
+ 
+ if (SOURCE_COMPILING)
+-    include(FetchContent)
+-    set(CPPHTTPLIB_REPO "https://gitcode.com/GitHub_Trending/cp/cpp-httplib.git")
+-    set(CPPHTTPLIB_TAG "v0.40.0")
+-    FetchContent_Declare(
+-            build-cpp-httplib
+-            GIT_REPOSITORY ${CPPHTTPLIB_REPO}
+-            GIT_TAG ${CPPHTTPLIB_TAG}
++    set(CPPHTTPLIB_LOCAL_INCLUDE_DIR
++            ${CMAKE_CURRENT_SOURCE_DIR}/source
+     )
+-    FetchContent_MakeAvailable(build-cpp-httplib)
+     add_library(cpp-httplib INTERFACE)
+     target_include_directories(cpp-httplib INTERFACE
+-            ${build-cpp-httplib_SOURCE_DIR}
++            ${CPPHTTPLIB_LOCAL_INCLUDE_DIR}
+     )
+ else ()
+     message(STATUS "Found cpp-httplib: ${CPPHTTPLIB_INCLUDE_DIR}, ${CPPHTTPLIB_LIBRARY}")
+     add_library(cpp-httplib INTERFACE)
+     target_include_directories(cpp-httplib SYSTEM INTERFACE ${CPPHTTPLIB_INCLUDE_DIR})
+     target_link_libraries(cpp-httplib INTERFACE ${CPPHTTPLIB_LIBRARY})
+-endif ()
+\ No newline at end of file
++endif ()

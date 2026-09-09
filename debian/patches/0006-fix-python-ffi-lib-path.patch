@@ -1,0 +1,42 @@
+From 8f4a2c1e9b3d50f1a6c8e7d2b9f3a4c5d6e7f8a9 Mon Sep 17 00:00:00 2001
+From: Trae <trae@local>
+Date: Mon, 1 Sep 2026 15:36:00 +0800
+Subject: [PATCH] fix(python-sdk): ffi库加载改为在系统路径中搜索
+
+python SDK的ubs_engine_binding_base.py和ubs_virt_agent_base.py
+使用硬编码的绝对路径/usr/lib64通过ctypes.CDLL加载so库，导致在
+aarch64-deb等库位于/usr/lib/aarch64-linux-gnu的环境下无法加载。
+改为仅传库文件名，由动态链接器在标准系统路径中搜索，与
+0003-fix-rmrs-dlopen-system-path.patch的修改方式保持一致。
+
+---
+ .../sdk/python/ffi/ubs_engine_binding_base.py      | 2 +-
+ .../python/ffi/ubs_virt_agent_base.py              | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/sdk/python/ffi/ubs_engine_binding_base.py b/src/sdk/python/ffi/ubs_engine_binding_base.py
+--- a/src/sdk/python/ffi/ubs_engine_binding_base.py
++++ b/src/sdk/python/ffi/ubs_engine_binding_base.py
+@@ -13,7 +13,7 @@
+ 
+ import ctypes
+ 
+-LIB_PATH = '/usr/lib64/libubse-client.so.1'
++LIB_PATH = 'libubse-client.so.1'
+ 
+ 
+ class UbsEngineBindingBase:
+diff --git a/src/addons/virt_agent/sdk/python/ffi/ubs_virt_agent_base.py b/src/addons/virt_agent/sdk/python/ffi/ubs_virt_agent_base.py
+--- a/src/addons/virt_agent/sdk/python/ffi/ubs_virt_agent_base.py
++++ b/src/addons/virt_agent/sdk/python/ffi/ubs_virt_agent_base.py
+@@ -17,7 +17,7 @@
+ from ubse.ffi.ubs_virt_agent_exceptions import UbsVirtAgentError, UbsVABaseError, UbsVAInvalidParamError, \
+     UbsVANullPointerError, UbsVAMemAllocError, UbsVAMemCopyError, UbsVASerializeError, UbsVADeserializeError
+ 
+-LIB_PATH = '/usr/lib64/libubs-virt-agent.so'
++LIB_PATH = 'libubs-virt-agent.so'
+ 
+ 
+ class UbsVirtAgentErrorCode(IntEnum):
+-- 
+2.54.0

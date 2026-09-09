@@ -55,7 +55,7 @@ override_dh_auto_install:
 	cp -r src/include/ debian/tmp/usr/include/ubse/
 
 	# Install python3-ubs-engine
-	python3 -m pip install . --target=./debian/tmp/usr/lib/python3/dist-packages/ubse/ --no-compile --no-deps
+	python3 setup.py install --root=$(CURDIR)/debian/tmp --install-lib=/usr/lib/python3/dist-packages --no-compile
 
 	# Install ubs-engine-virtagent
 	install -Dm644 $(BUILD_DIR)/lib/libvirtagent.so debian/tmp/$(LIBDIR)/libvirtagent.so
