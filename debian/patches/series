@@ -1,3 +1,6 @@
 0001-fix-cmakelist-for-deb.patch
 0002-force-include-cstdint-for-gcc14.patch
 0003-fix-rmrs-dlopen-system-path.patch
+0004-add-cpp-httplib-0.46.0-header.patch
+0005-use-local-cpp-httplib-header.patch
+0006-fix-python-ffi-lib-path.patch
