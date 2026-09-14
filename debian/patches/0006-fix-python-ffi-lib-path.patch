@@ -34,7 +34,7 @@ diff --git a/src/addons/virt_agent/sdk/python/ffi/ubs_virt_agent_base.py b/src/a
      UbsVANullPointerError, UbsVAMemAllocError, UbsVAMemCopyError, UbsVASerializeError, UbsVADeserializeError
  
 -LIB_PATH = '/usr/lib64/libubs-virt-agent.so'
-+LIB_PATH = 'libubs-virt-agent.so'
++LIB_PATH = 'libubs-virt-agent.so.1'
  
  
  class UbsVirtAgentErrorCode(IntEnum):

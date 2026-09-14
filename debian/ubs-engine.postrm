@@ -25,7 +25,9 @@ remove_directory() {
 }
 
 if [ "$1" = "purge" ]; then
-    systemctl daemon-reload 2>/dev/null || true
+    if [ -d /run/systemd/system ] && command -v deb-systemd-invoke >/dev/null 2>&1; then
+        deb-systemd-invoke daemon-reload >/dev/null 2>&1 || true
+    fi
 
     deleted_semaphore
 

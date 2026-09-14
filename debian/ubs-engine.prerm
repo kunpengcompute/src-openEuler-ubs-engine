@@ -4,11 +4,10 @@ set -e
 SERVICE_NAME="ubse.service"
 
 if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
-    if systemctl cat "$SERVICE_NAME" >/dev/null 2>&1; then
-        systemctl stop "$SERVICE_NAME" || true
-        systemctl disable "$SERVICE_NAME" || true
+    if [ -d /run/systemd/system ] && command -v deb-systemd-invoke >/dev/null 2>&1; then
+        deb-systemd-invoke stop "$SERVICE_NAME" >/dev/null 2>&1 || true
     fi
-    if systemctl list-units --type=service 2>/dev/null | grep -q "$SERVICE_NAME"; then
-        systemctl reset-failed "$SERVICE_NAME" 2>/dev/null || true
+    if command -v deb-systemd-helper >/dev/null 2>&1; then
+        deb-systemd-helper disable "$SERVICE_NAME" >/dev/null 2>&1 || true
     fi
 fi

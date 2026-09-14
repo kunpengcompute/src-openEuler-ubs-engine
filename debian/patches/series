@@ -4,3 +4,4 @@
 0004-add-cpp-httplib-0.46.0-header.patch
 0005-use-local-cpp-httplib-header.patch
 0006-fix-python-ffi-lib-path.patch
+0007-adapt-dlopen-paths-for-deb.patch

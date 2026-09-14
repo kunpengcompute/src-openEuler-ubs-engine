@@ -36,13 +36,18 @@ override_dh_auto_install:
 	install -Dm755 $(BUILD_DIR)/bin/ubse debian/tmp/usr/bin/ubse
 	install -Dm755 $(BUILD_DIR)/bin/ubsectl debian/tmp/usr/bin/ubsectl
 
-	sed 's/\r$$//' scripts/rpm/ubse.service | install -Dm644 /dev/stdin debian/tmp/usr/lib/systemd/system/ubse.service
+	sed 's/\r$$//' scripts/rpm/ubse.service \
+		| sed 's|^Environment=LD_LIBRARY_PATH=.*$$|Environment=LD_LIBRARY_PATH=/usr/lib/$(DEB_HOST_MULTIARCH)/ubse|' \
+		| install -Dm644 /dev/stdin debian/tmp/usr/lib/systemd/system/ubse.service
 
 	install -Dm644 $(BUILD_DIR)/conf/ubse.conf debian/tmp/etc/ubse/ubse.conf
 	install -Dm644 $(BUILD_DIR)/conf/ubse_auth_default.conf debian/tmp/etc/ubse/ubse_auth_default.conf
 	install -Dm644 $(BUILD_DIR)/conf/ubse_plugin_admission.conf debian/tmp/etc/ubse/ubse_plugin_admission.conf
 
-	install -Dm644 scripts/command_completion/cli_commands.sh debian/tmp/etc/bash_completion.d/cli_commands.sh
+	# Bash completion files must not carry a shebang (lintian
+	# bash-completion-with-hashbang); they are sourced by the loader.
+	install -d debian/tmp/usr/share/bash-completion/completions
+	sed '1{/^#!.*bash/d}' scripts/command_completion/cli_commands.sh > debian/tmp/usr/share/bash-completion/completions/ubsectl
 
 	# Install ubs-engine-client-libs
 	install -Dm644 $(BUILD_DIR)/lib/libubse-client.so.1.0.1 debian/tmp/$(LIBDIR)/libubse-client.so.1.0.1
@@ -57,9 +62,9 @@ override_dh_auto_install:
 	# Install python3-ubs-engine
 	python3 setup.py install --root=$(CURDIR)/debian/tmp --install-lib=/usr/lib/python3/dist-packages --no-compile
 
-	# Install ubs-engine-virtagent
-	install -Dm644 $(BUILD_DIR)/lib/libvirtagent.so debian/tmp/$(LIBDIR)/libvirtagent.so
-	install -Dm644 $(BUILD_DIR)/lib/libstrategy.so debian/tmp/$(LIBDIR)/libstrategy.so
+	# Install ubs-engine-virtagent (no-SONAME plugin libs go to the private dir)
+	install -Dm644 $(BUILD_DIR)/lib/libvirtagent.so debian/tmp/$(LIBDIR)/ubse/libvirtagent.so
+	install -Dm644 $(BUILD_DIR)/lib/libstrategy.so debian/tmp/$(LIBDIR)/ubse/libstrategy.so
 	install -Dm644 $(BUILD_DIR)/lib/libubs-virt-agent.so.1.0.1 debian/tmp/$(LIBDIR)/libubs-virt-agent.so.1.0.1
 	ln -sf libubs-virt-agent.so.1.0.1 debian/tmp/$(LIBDIR)/libubs-virt-agent.so.1
 	ln -sf libubs-virt-agent.so.1 debian/tmp/$(LIBDIR)/libubs-virt-agent.so
@@ -67,20 +72,32 @@ override_dh_auto_install:
 	install -Dm644 src/addons/virt_agent/conf/plugin_virt_agent.conf debian/tmp/etc/ubse/plugins/plugin_virt_agent.conf
 	install -Dm644 src/addons/virt_agent/conf/auth-virt_agent.conf debian/tmp/etc/ubse/plugins/auth-virt_agent.conf
 
+	# escape.algorithm.dir 必须为绝对路径（escape_algorithm_module.cpp 强制校验），
+	# 入口插件库 ubse.plugin.pkg 保持裸名，由 systemd unit 的 LD_LIBRARY_PATH 解析。
+	sed -i 's|^escape.algorithm.dir=.*$$|escape.algorithm.dir=/usr/lib/$(DEB_HOST_MULTIARCH)/ubse/libstrategy.so|' \
+		debian/tmp/etc/ubse/plugins/plugin_virt_agent.conf
+
 	mkdir -p debian/tmp/usr/include
 	cp -r src/addons/virt_agent/sdk/include/ debian/tmp/usr/include/virt_agent/
 
-	# Install ubs-engine-ucache
-	install -Dm644 $(BUILD_DIR)/lib/libucache_plugin.so debian/tmp/$(LIBDIR)/libucache_plugin.so
+	# Install ubs-engine-ucache (no-SONAME plugin lib goes to the private dir)
+	install -Dm644 $(BUILD_DIR)/lib/libucache_plugin.so debian/tmp/$(LIBDIR)/ubse/libucache_plugin.so
 	install -Dm644 src/addons/ucache/conf/plugin_ucache.conf debian/tmp/etc/ubse/plugins/
 
-	# Install ubs-engine-rmrs
-	install -Dm644 $(BUILD_DIR)/lib/libmempooling.so debian/tmp/$(LIBDIR)/libmempooling.so
+	# Install ubs-engine-rmrs (no-SONAME plugin lib goes to the private dir)
+	install -Dm644 $(BUILD_DIR)/lib/libmempooling.so debian/tmp/$(LIBDIR)/ubse/libmempooling.so
 	install -Dm644 src/addons/rmrs/conf/plugin_mempooling.conf debian/tmp/etc/ubse/plugins/
 
-	# Install processmem
-	install -Dm644 $(BUILD_DIR)/lib/libprocess_mem.so debian/tmp/$(LIBDIR)/libprocess_mem.so
+	# Install processmem (no-SONAME plugin lib goes to the private dir)
+	install -Dm644 $(BUILD_DIR)/lib/libprocess_mem.so debian/tmp/$(LIBDIR)/ubse/libprocess_mem.so
 	install -Dm644 conf/plugin_process_mem.conf debian/tmp/etc/ubse/plugins/
+
+# Only the packages shipping real shared libs with SONAMEs in the standard
+# dirs get shlibs/ldconfig triggers; the no-SONAME plugin libs in the private
+# ubse/ dir must not activate ldconfig (lintian
+# package-has-unnecessary-activation-of-ldconfig-trigger).
+override_dh_makeshlibs:
+	dh_makeshlibs -p ubs-engine-client-libs -p ubs-engine-virtagent
 
 override_dh_shlibdeps:
 	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info

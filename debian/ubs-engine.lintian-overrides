@@ -1,0 +1,4 @@
+# 安装/升级时需修正运行期数据目录（/var/log/ubse、/var/lib/ubse 及其子目录）
+# 内既有文件的属主为 ubse:ubse。find 已排除符号链接并配合 --no-dereference，
+# 属主/组固定且仅作用于包自身的数据目录，越权风险可控。
+ubs-engine binary: recursive-privilege-change

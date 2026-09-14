@@ -1,0 +1,119 @@
+From 9e4b6a1d7c2f8e03b5a9d4c7e6f1a2b3c4d5e6f7 Mon Sep 17 00:00:00 2001
+From: Trae <trae@local>
+Date: Sun, 14 Sep 2026 12:00:00 +0800
+Subject: [PATCH] fix(dlopen): 剩余硬编码so路径改为系统路径搜索
+
+将剩余使用硬编码绝对路径 /usr/lib64 的 dlopen 调用改为仅传库名，
+由动态链接器在标准系统路径（多架构，如 /usr/lib/aarch64-linux-gnu）中
+搜索，与 0003-fix-rmrs-dlopen-system-path.patch 及
+0006-fix-python-ffi-lib-path.patch 的修改方式保持一致。涉及：
+- virt_agent 插件内部的 libvirt.so.0 与 libmempooling.so
+- ucache 模块的 libubturbo_client.so.1
+- process_mem 模块的 libmempooling.so
+- Go SDK 的 libubse-client.so.1 与 libubs-virt-agent.so.1
+- virt_agent 默认值 DEFAULT_ESCAPE_ALGORITHM_DIR 改为 deb 多架构绝对路径
+
+注：escape.algorithm.dir 指向的 libstrategy.so 同样强制要求绝对路径，
+由 debian/rules 在打包阶段 sed 重写为多架构绝对路径，故不在本补丁内修改。
+
+---
+ src/addons/process_mem/process_mem_pid_bridge.h               | 2 +-
+ src/addons/ucache/common/turbo_runtime_manager.cpp            | 2 +-
+ src/addons/virt_agent/common/libvirt/libvirt_module.cpp       | 2 +-
+ src/addons/virt_agent/common/mempooling/mempooling_module.cpp | 2 +-
+ src/addons/virt_agent/sdk/go/dlopen/dl.go                     | 2 +-
+ src/sdk/go/dlopen/dl.go                                       | 2 +-
+ src/addons/virt_agent/common/vm_configuration.h               | 2 +-
+ 7 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/src/addons/process_mem/process_mem_pid_bridge.h b/src/addons/process_mem/process_mem_pid_bridge.h
+index 7ae90c7..66d282c 100644
+--- a/src/addons/process_mem/process_mem_pid_bridge.h
++++ b/src/addons/process_mem/process_mem_pid_bridge.h
+@@ -21,7 +21,7 @@
+ #include "process_mem_pid_manager_def.h"
+ 
+ namespace process_mem::pid::bridge {
+-constexpr const char* MEMPOOLING_PATH = "/usr/lib64/libmempooling.so";
++constexpr const char* MEMPOOLING_PATH = "libmempooling.so";
+ 
+ using MigrateOut = std::function<int(const std::vector<mempooling::smap::MigrateOutPayload>&, int)>;
+ using Remove = std::function<int(const uint16_t, const std::vector<pid_t>&, int)>;
+diff --git a/src/addons/ucache/common/turbo_runtime_manager.cpp b/src/addons/ucache/common/turbo_runtime_manager.cpp
+index b4d2f2b..5cb0c4a 100644
+--- a/src/addons/ucache/common/turbo_runtime_manager.cpp
++++ b/src/addons/ucache/common/turbo_runtime_manager.cpp
+@@ -22,7 +22,7 @@ namespace turbo::ucache {
+ using namespace ubse::log;
+ using namespace ::ucache;
+ 
+-static constexpr char LIBOSTURBO_CLIENT_PATH[] = "/usr/lib64/libubturbo_client.so";
++static constexpr char LIBOSTURBO_CLIENT_PATH[] = "libubturbo_client.so.1";
+ void* TurboRuntimeManager::osturboClientHandle = nullptr;
+ UBTurboUCacheExecuteTaskPtr TurboRuntimeManager::ucacheExecuteTask = nullptr;
+ 
+diff --git a/src/addons/virt_agent/common/libvirt/libvirt_module.cpp b/src/addons/virt_agent/common/libvirt/libvirt_module.cpp
+index 0decd81..248356c 100644
+--- a/src/addons/virt_agent/common/libvirt/libvirt_module.cpp
++++ b/src/addons/virt_agent/common/libvirt/libvirt_module.cpp
+@@ -32,7 +32,7 @@ VirDomainLookupByUUIDStringFunc LibvirtModule::virDomainLookupByUUIDStringFunc =
+ 
+ VmResult LibvirtModule::Init()
+ {
+-    libvirtHandle = dlopen("/usr/lib64/libvirt.so.0", RTLD_LAZY);
++    libvirtHandle = dlopen("libvirt.so.0", RTLD_LAZY);
+     if (libvirtHandle == nullptr) {
+         UBSE_LOG_ERROR << "load libvirt.so.0 failed, " << FormatRetCode(errno);
+         return VM_ERROR;
+diff --git a/src/addons/virt_agent/common/mempooling/mempooling_module.cpp b/src/addons/virt_agent/common/mempooling/mempooling_module.cpp
+index f69e014..a7ac336 100644
+--- a/src/addons/virt_agent/common/mempooling/mempooling_module.cpp
++++ b/src/addons/virt_agent/common/mempooling/mempooling_module.cpp
+@@ -43,7 +43,7 @@ UBSRMRSSmapEnableProcessMigrateGroupedFunc MempoolingModule::ubsRMRSSmapEnablePr
+ 
+ VmResult MempoolingModule::Init()
+ {
+-    const std::string libmempoolingPath = "/usr/lib64/libmempooling.so";
++    const std::string libmempoolingPath = "libmempooling.so";
+     libmempoolingHandler_ = dlopen(libmempoolingPath.c_str(), RTLD_LAZY);
+     if (libmempoolingHandler_ == nullptr) {
+         UBSE_LOG_ERROR << "load libmempooling.so failed, " << dlerror();
+diff --git a/src/addons/virt_agent/common/vm_configuration.h b/src/addons/virt_agent/common/vm_configuration.h
+index 2859a71..0c2ea3b 100644
+--- a/src/addons/virt_agent/common/vm_configuration.h
++++ b/src/addons/virt_agent/common/vm_configuration.h
+@@ -75,7 +75,7 @@ const std::string NODEID_KEY = "nodeId";
+ const std::string MAX_PER_TOTAL_MEMBORROW_SIZE_KEY = "borrow.maxPerTotalMemBorrowSize";
+ const std::string HAM_MIGRATION_MAX_TIMEOUT_KEY = "mig.ham.maxTimeout";
+ const std::string DEFAULT_UDS_ADDRESS = "/var/run/ubse/ubseAgentUds.socket";
+-const std::string DEFAULT_ESCAPE_ALGORITHM_DIR = "/usr/lib64/libstrategy.so";
++const std::string DEFAULT_ESCAPE_ALGORITHM_DIR = "/usr/lib/aarch64-linux-gnu/ubse/libstrategy.so";
+ const uint32_t DEFAULT_VIRT_SCENE_TYPE = 1;
+ 
+ class VmConfiguration {
+diff --git a/src/addons/virt_agent/sdk/go/dlopen/dl.go b/src/addons/virt_agent/sdk/go/dlopen/dl.go
+index 5ae1954..282f626 100644
+--- a/src/addons/virt_agent/sdk/go/dlopen/dl.go
++++ b/src/addons/virt_agent/sdk/go/dlopen/dl.go
+@@ -23,7 +23,7 @@ import (
+ 	"unsafe"
+ )
+ 
+-var soPath = "/usr/lib64/libubs-virt-agent.so.1"
++var soPath = "libubs-virt-agent.so.1"
+ var libHandle unsafe.Pointer
+ 
+ // GetLibHandle Obtain dynamic library handle
+diff --git a/src/sdk/go/dlopen/dl.go b/src/sdk/go/dlopen/dl.go
+index 51ad2cd..da72811 100644
+--- a/src/sdk/go/dlopen/dl.go
++++ b/src/sdk/go/dlopen/dl.go
+@@ -23,7 +23,7 @@ import (
+ 	"unsafe"
+ )
+ 
+-var soPath = "/usr/lib64/libubse-client.so.1"
++var soPath = "libubse-client.so.1"
+ var libHandle unsafe.Pointer
+ 
+ // GetLibHandle 获取动态库句柄

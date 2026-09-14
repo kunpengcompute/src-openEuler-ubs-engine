@@ -1,3 +1,2 @@
-/etc/ubse/plugins/plugin_ucache.conf
-/usr/lib/aarch64-linux-gnu/libucache_plugin.so
-
+etc/ubse/plugins/plugin_ucache.conf
+usr/lib/aarch64-linux-gnu/ubse/libucache_plugin.so
