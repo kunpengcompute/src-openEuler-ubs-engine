@@ -22,7 +22,8 @@ ensure_directory_owner() {
         chown "$SYSTEM_USER:$SYSTEM_GROUP" "$dir_path" 2>/dev/null || true
     fi
     if [ "$recursive" = true ]; then
-        chown -R "$SYSTEM_USER:$SYSTEM_GROUP" "$dir_path" 2>/dev/null || true
+        # Do not dereference symbolic links to avoid symlink attacks.
+        find "$dir_path" ! -type l -exec chown --no-dereference "$SYSTEM_USER:$SYSTEM_GROUP" {} + 2>/dev/null || true
     fi
 }
 
@@ -61,7 +62,9 @@ update_config() {
     fi
 }
 
-systemctl daemon-reload 2>/dev/null || true
+if command -v deb-systemd-invoke >/dev/null 2>&1; then
+    deb-systemd-invoke daemon-reload >/dev/null 2>&1 || true
+fi
 
 ensure_directory_owner "$LOG_DIR" true
 ensure_directory_owner "$DATA_DIR" true
@@ -75,7 +78,9 @@ chmod 755 "$SOCKET_DIR" 2>/dev/null || true
 chmod 700 "$CERT_DIR" 2>/dev/null || true
 chmod 700 "$LCNE_CERT_DIR" 2>/dev/null || true
 
-systemctl enable "$SERVICE_NAME" 2>/dev/null || true
+if command -v deb-systemd-helper >/dev/null 2>&1; then
+    deb-systemd-helper enable "$SERVICE_NAME" >/dev/null 2>&1 || true
+fi
 
 if [ "${MXE_SCENE:-}" = "vm" ]; then
     update_config /etc/ubse/ubse_plugin_admission.conf

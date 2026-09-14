@@ -2,7 +2,7 @@ Source: ubs-engine
 Section: admin
 Priority: optional
 Maintainer: zhangqin <zhangqin99@h-partners.com>
-Build-Depends: debhelper-compat (= 12),
+Build-Depends: debhelper-compat (= 13),
                cmake (>= 3.22),
                make (>= 4.3),
                g++ (>= 10.3),
@@ -77,6 +77,14 @@ Architecture: arm64
 Depends: ubs-engine (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: virtagent plugin
  Package for virt_agent plugin.
+
+Package: ubs-engine-virtagent-dev
+Section: libdevel
+Architecture: arm64
+Depends: ubs-engine-virtagent (= ${binary:Version}), ${misc:Depends}
+Description: Development package for virt_agent SDK
+ Header files and the development symlink (libubs-virt-agent.so) for
+ developing applications that link against the virt_agent SDK.
 
 Package: ubs-engine-ucache
 Architecture: arm64

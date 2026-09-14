@@ -1,2 +1,2 @@
-/etc/ubse/plugins/plugin_process_mem.conf
-/usr/lib/aarch64-linux-gnu/libprocess_mem.so
+etc/ubse/plugins/plugin_process_mem.conf
+usr/lib/aarch64-linux-gnu/ubse/libprocess_mem.so
