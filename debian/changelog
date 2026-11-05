@@ -1,3 +1,14 @@
+ubs-engine (1.0.0-2) UNRELEASED; urgency=medium
+
+  * Fix debian packaging to conform to Debian policy and resolve
+    security and path issues
+  * Correct build dependency libvirt-devel to libvirt-dev
+  * Change dependency libobmm1 to obmm
+  * Introduce cpp-httplib headers and fix python package bug
+  * CommitId: b10221cd645873669569cc0ec293912704486f09
+
+ -- zhangqin <zhangqin99@h-partners.com>  Thu, 05 Nov 2026 15:06:34 +0800
+
 ubs-engine (1.0.0-1) unstable; urgency=low
 
   * Package init
