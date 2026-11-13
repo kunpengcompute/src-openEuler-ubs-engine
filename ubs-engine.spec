@@ -6,23 +6,23 @@
 Summary:        ubse daemon
 Name:           ubs-engine
 ExclusiveArch:  aarch64
-Version:        1.0.0
-Release:        61%{?dist}
+Version:        1.0.1
+Release:        1%{?dist}
 License:        Mulan PSL v2
 URL:            https://atomgit.com/openeuler/ubs-engine
 Source0:        %{name}-%{version}.tar.gz
 Group:          System Environment/Base
 Prefix: /usr
 
-BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3
+BuildRequires:  cmake >= 3.22 make >= 4.3 gcc-c++ >= 10.3 gcc >= 10.3 python3-setuptools
 BuildRequires:  glibc-devel >= 2.34 libstdc++-devel >= 10.3
 BuildRequires:  systemd-devel >= 249
-BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.38.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-15 
+BuildRequires:  libboundscheck >= v1.1 libxml2-devel >= 2.9 openssl-devel >= 3.0 cpp-httplib-devel >= 0.40.0 rapidjson-devel >= 1.1.0 ubs-comm-devel >= 1.0.0-27
 BuildRequires:  numactl-libs >= 2.0
 BuildRequires:  ninja-build >= 1.10 bash bc coreutils sudo util-linux-user patch
-BuildRequires:  libvirt-devel >= 9.0
-BuildRequires:  python3-setuptools
-Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib-devel >= 0.38.0 ubs-comm-lib >= 1.0.0-15 libobmm
+BuildRequires:  libvirt-devel >= 9.0 kernel-devel
+Requires: glibc >= 2.34 libgcc >= 10.3 libstdc++ >= 10.3 libboundscheck >= v1.1 libxml2 >= 2.9 openssl-libs >= 3.0 cpp-httplib >= 0.40.0 ubs-comm-lib >= 1.0.0-27
+Requires: (libobmm or obmm)
 Requires: tar systemd
 Requires(pre): coreutils shadow systemd glibc-common
 Requires(post): coreutils gawk util-linux systemd grep sed
@@ -35,6 +35,14 @@ Requires(postun): coreutils gawk util-linux systemd shadow glibc-common
 %description
 UBS Engine
 
+# ========================================================
+#                   SUBPACKAGE: ubs-engine-process-mem
+# ========================================================
+%package processmem
+Summary: processmem plugin
+Requires: %{name} = %{version}-%{release}
+%description processmem
+Development package for processmem plugin
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-client-libs
@@ -46,6 +54,7 @@ UBS Engine
 Summary: UBSE client shared library for third-party integration
 Provides: %{lib_name}.so.%{lib_soversion}
 Requires: libboundscheck, libstdc++
+Conflicts: %{name} < %{version}-%{release}
 Obsoletes: %{name}-client-libs < %{version}-%{release}
 Provides: %{name}-client-libs = %{version}-%{release}
 
@@ -103,6 +112,15 @@ Package for virt_agent plugin
 
 %postun virtagent
 /sbin/ldconfig
+
+# ========================================================
+#                   SUBPACKAGE: ubs-engine-virtagent-devel
+# ========================================================
+%package virtagent-devel
+Summary: Development package for virt_agent SDK
+Requires: %{name}-virtagent = %{version}-%{release}
+%description virtagent-devel
+Header files and development symlink for developing applications that use the virt_agent SDK.
 
 # ========================================================
 #                   SUBPACKAGE: ubs-engine-ucache
@@ -233,6 +251,9 @@ mkdir -p %{buildroot}/etc/ubse/
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/ubse*.conf %{buildroot}/etc/ubse/
 mkdir -p %{buildroot}/etc/ubse/plugins
 
+mkdir -p %{buildroot}/etc/ubse/topo
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/conf/topo/*.json %{buildroot}/etc/ubse/topo/
+
 mkdir -p %{buildroot}/etc/bash_completion.d/
 cp -f %{_builddir}/%{project_dir}/scripts/command_completion/cli_commands.sh %{buildroot}/etc/bash_completion.d/
 
@@ -249,6 +270,9 @@ ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
 mkdir -p %{buildroot}/usr/include/virt_agent
 cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
 
+#install processmem
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libprocess_mem.so %{buildroot}/usr/lib64/
+cp %{_builddir}/%{project_dir}/conf/plugin_process_mem.conf %{buildroot}/etc/ubse/plugins/
 
 #install client-libs
 cmake --install %{_builddir}/%{project_dir}/%{cmake_build_dir} \
@@ -271,9 +295,20 @@ cp %{_builddir}/%{project_dir}/src/addons/rmrs/conf/plugin_mempooling.conf %{bui
 mkdir -p %{buildroot}/usr/include/mempooling/
 cp %{_builddir}/%{project_dir}/src/addons/rmrs/interface/mempooling_interface.h %{buildroot}/usr/include/mempooling/
 
+#install bandbridge kernel module (only on aarch64)
+%ifarch aarch64
+mkdir -p %{buildroot}/lib/modules/ubse
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/modules/bandbridge.ko %{buildroot}/lib/modules/ubse
+%endif
+
 
 #install python-sdk
 %py3_install
+
+#install SEI sudoers
+mkdir -p %{buildroot}/etc/sudoers.d/
+cp %{_builddir}/%{project_dir}/scripts/rpm/ubse-sei-sudo %{buildroot}/etc/sudoers.d/ubse-sei
+chmod 440 %{buildroot}/etc/sudoers.d/ubse-sei
 
 
 %pre
@@ -373,7 +408,16 @@ chmod 750 "%{log_dir}" "%{data_dir}" "%{data_dir}/data"
 chmod 755 "%{socket_dir}"
 chmod 700 "%{cert_dir}"
 chmod 700 "%{lcne_cert_dir}"
-
+%ifarch aarch64
+if [ -f /lib/modules/ubse/bandbridge.ko ]; then
+    mkdir -p /lib/modules/$(uname -r)/extra
+    ln -sf /lib/modules/ubse/bandbridge.ko /lib/modules/$(uname -r)/extra/bandbridge.ko
+    depmod -a $(uname -r)
+fi
+%endif
+if [ "$ENABLE_AI" = "true" ]; then
+ 	sed -i '/^Environment=SCENE_TYPE=/s/common/ai/' /usr/lib/systemd/system/ubse.service
+fi
 # 此处仅enable服务的原因是：如果软件包在安装时 systemctl start，可能会在管理员不希望该服务运行的场景下（例如：正在进行系统维护、缺少必要的配置文件、或者处于测试环境）引发意外问题甚至导致安装失败。
 systemctl enable %{service_name}
 
@@ -388,6 +432,12 @@ set -e
 if [ "$1" -ne 0 ]; then
     exit 0
 fi
+%ifarch aarch64
+if [ -L /lib/modules/$(uname -r)/extra/bandbridge.ko ]; then
+    modprobe -r bandbridge 2>/dev/null || true
+    rm -f /lib/modules/$(uname -r)/extra/bandbridge.ko
+fi
+%endif
 if systemctl cat %{service_name} >/dev/null 2>&1 ; then
     systemctl stop %{service_name} || true
     systemctl disable %{service_name} || true
@@ -403,6 +453,9 @@ if [ "$1" -ne 0 ]; then
 fi
 %{deleted_semaphore}
 %{remove_directory}
+%ifarch aarch64
+depmod -a $(uname -r)
+%endif
 systemctl daemon-reload
 remove_directory %{cert_dir}
 remove_directory %{socket_dir}
@@ -426,8 +479,17 @@ fi
 %dir /etc/ubse/
 %config(noreplace) /etc/ubse/ubse*.conf
 %dir /etc/ubse/plugins
+%dir /etc/ubse/topo
+%config(noreplace) /etc/ubse/topo/*.json
 %defattr(644,root,root,-)
 /etc/bash_completion.d/cli_commands.sh
+%defattr(440,root,root,-)
+%config(noreplace) /etc/sudoers.d/ubse-sei
+%ifarch aarch64
+%defattr(644,root,root,755)
+%dir /lib/modules/ubse
+/lib/modules/ubse/bandbridge.ko
+%endif
 
 %files client-libs
 %defattr(755,root,root,-)
@@ -456,6 +518,9 @@ fi
 /usr/lib64/libubs-virt-agent.so.1.0.0
 %defattr(-,root,root,-)
 /usr/lib64/libubs-virt-agent.so.1
+
+%files virtagent-devel
+%defattr(-,root,root,-)
 /usr/lib64/libubs-virt-agent.so
 %defattr(644,root,root,755)
 /usr/include/virt_agent/
@@ -475,6 +540,9 @@ fi
 /usr/include/mempooling/
 
 %changelog
+* Fri Nov 13 2026 Zhu Chengcheng <zhuchengcheng18@huawei.com> - 1.0.1-1
+- [Type] sync
+- [DESC] synchronize version to opencloudos repository
 * Wed Jun 3 2026 Yuan Sicheng <yuansicheng@huawei.com> - 1.0.0-61
 - [Type] sync
 - [DESC] synchronize version to opencloudos repository
