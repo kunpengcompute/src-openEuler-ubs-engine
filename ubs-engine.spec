@@ -264,8 +264,8 @@ cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libvirtagent.so %{buildroo
 cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libstrategy.so %{buildroot}/usr/lib64/
 cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/plugin_virt_agent.conf %{buildroot}/etc/ubse/plugins/
 cp %{_builddir}/%{project_dir}/src/addons/virt_agent/conf/auth-virt_agent.conf %{buildroot}/etc/ubse/plugins/
-cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/
-ln -sf libubs-virt-agent.so.1.0.0 %{buildroot}/usr/lib64/libubs-virt-agent.so.1
+cp %{_builddir}/%{project_dir}/%{cmake_build_dir}/lib/libubs-virt-agent.so.1.0.1 %{buildroot}/usr/lib64/
+ln -sf libubs-virt-agent.so.1.0.1 %{buildroot}/usr/lib64/libubs-virt-agent.so.1
 ln -sf libubs-virt-agent.so.1 %{buildroot}/usr/lib64/libubs-virt-agent.so
 mkdir -p %{buildroot}/usr/include/virt_agent
 cp -r %{_builddir}/%{project_dir}/src/addons/virt_agent/sdk/include/* %{buildroot}/usr/include/virt_agent/
@@ -278,7 +278,7 @@ cp %{_builddir}/%{project_dir}/conf/plugin_process_mem.conf %{buildroot}/etc/ubs
 cmake --install %{_builddir}/%{project_dir}/%{cmake_build_dir} \
     --component ubse_sdk \
     --prefix %{buildroot}/usr
-ln -sf libubse-client.so.1.0.0 %{buildroot}/usr/lib64/libubse-client.so.1
+ln -sf libubse-client.so.1.0.1 %{buildroot}/usr/lib64/libubse-client.so.1
 
 #install client-devel
 ln -sf libubse-client.so.1 %{buildroot}/usr/lib64/libubse-client.so
@@ -493,7 +493,7 @@ fi
 
 %files client-libs
 %defattr(755,root,root,-)
-/usr/lib64/libubse-client.so.1.0.0
+/usr/lib64/libubse-client.so.1.0.1
 %defattr(-,root,root,-)
 /usr/lib64/libubse-client.so.1
 
@@ -515,7 +515,7 @@ fi
 %defattr(755,root,root,-)
 /usr/lib64/libvirtagent.so
 /usr/lib64/libstrategy.so
-/usr/lib64/libubs-virt-agent.so.1.0.0
+/usr/lib64/libubs-virt-agent.so.1.0.1
 %defattr(-,root,root,-)
 /usr/lib64/libubs-virt-agent.so.1
 
